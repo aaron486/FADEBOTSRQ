@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://rsms.me/inter/inter.css");
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #0B0B0F;
+  color: #F5F5F7;
+  font-family: "Inter", system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #0B0B0F;
+}
+::-webkit-scrollbar-thumb {
+  background: #2D2D3A;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C7FB4A;
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(199, 251, 74, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(199, 251, 74, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
