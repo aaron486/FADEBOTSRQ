@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.env
+ugc.db
+ugc_export.json
+*.log
+.pytest_cache/

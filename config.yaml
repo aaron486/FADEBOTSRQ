@@ -1,0 +1,48 @@
+# Viral UGC collection agent configuration.
+#
+# Each collector run pulls candidate posts, scores them for virality
+# (engagement velocity), and optionally sends the top candidates to Claude
+# for relevance/repurposing analysis.
+
+niche: >
+  Sports betting, sports fades, bad beats, parlay culture, sports highlights,
+  gambling humor, and sportsbook content for the fade.bet brand.
+
+# Posts must hit this virality score (0-100) to be kept.
+min_virality_score: 20
+
+# Max posts to keep per collector per run, after scoring.
+max_posts_per_source: 50
+
+reddit:
+  enabled: true
+  # Public JSON endpoints — no API key required.
+  subreddits:
+    - sportsbook
+    - sportsbetting
+    - gambling
+    - nba
+    - nfl
+    - funny
+  # top | hot | rising
+  listing: top
+  # hour | day | week
+  timeframe: day
+  limit: 50
+
+youtube:
+  enabled: true   # requires YOUTUBE_API_KEY in the environment; skipped if missing
+  queries:
+    - "bad beat parlay"
+    - "sports betting reaction"
+    - "crazy sports finish"
+  published_within_hours: 48
+  max_results: 25
+
+analysis:
+  enabled: true   # requires ANTHROPIC_API_KEY; skipped if missing
+  model: claude-opus-4-8
+  # How many of the top-scored posts to analyze per run.
+  top_n: 30
+  # Posts per Claude request.
+  batch_size: 10
