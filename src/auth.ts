@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import NextAuth from "next-auth";
 import type { Provider } from "next-auth/providers";
 import Credentials from "next-auth/providers/credentials";
@@ -5,6 +6,12 @@ import Resend from "next-auth/providers/resend";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
+
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
 
 const devLoginEnabled =
   process.env.AUTH_DEV_LOGIN === "true" && process.env.NODE_ENV !== "production";
@@ -41,6 +48,32 @@ const providers: Provider[] = [
     },
   }),
 ];
+
+// Shared team password login — lets the team use the app before email
+// sending (Resend) is configured. Enabled by setting APP_PASSWORD.
+if (process.env.APP_PASSWORD) {
+  providers.push(
+    Credentials({
+      id: "team-password",
+      name: "Team password",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const email = String(credentials?.email ?? "").toLowerCase().trim();
+        const password = String(credentials?.password ?? "");
+        if (!email || !password || !safeEqual(password, process.env.APP_PASSWORD!)) return null;
+        if (!(await isAllowed(email))) return null;
+        return prisma.user.upsert({
+          where: { email },
+          update: {},
+          create: { email, name: email.split("@")[0] },
+        });
+      },
+    })
+  );
+}
 
 if (devLoginEnabled) {
   providers.push(
