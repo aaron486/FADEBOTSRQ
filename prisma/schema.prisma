@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Auth.js models ----------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  creators      Creator[]         @relation("CreatorOwner")
+  messages      OutreachMessage[]
+  activities    Activity[]
+  createdAt     DateTime  @default(now())
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model AllowedEmail {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  addedBy   String?
+  createdAt DateTime @default(now())
+}
+
+// ---------- Creator pipeline ----------
+
+enum Platform {
+  INSTAGRAM
+  X
+  EMAIL
+}
+
+enum Stage {
+  TO_CONTACT
+  OUTREACH_SENT
+  RESPONDED
+  CONFIRMED
+  CONTRACTED
+  POSTED
+  DECLINED
+}
+
+enum ContractStatus {
+  NONE
+  DRAFTING
+  SENT
+  SIGNED
+}
+
+enum MessageStatus {
+  DRAFT
+  SENT
+  FAILED
+}
+
+model Creator {
+  id        String   @id @default(cuid())
+  name      String
+  platform  Platform
+  handle    String
+  email     String?
+  followers Int?
+  niche     String?
+  notes     String?
+  stage     Stage    @default(TO_CONTACT)
+
+  agreedCostCents  Int?
+  paidCents        Int?
+  paidAt           DateTime?
+  contractStatus   ContractStatus @default(NONE)
+  contractSentAt   DateTime?
+  contractSignedAt DateTime?
+  contractNotes    String?
+
+  ownerId String?
+  owner   User?   @relation("CreatorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  messages   OutreachMessage[]
+  posts      Post[]
+  activities Activity[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([stage])
+  @@index([platform])
+}
+
+model Template {
+  id        String    @id @default(cuid())
+  name      String
+  platform  Platform?
+  subject   String?
+  body      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model OutreachMessage {
+  id         String        @id @default(cuid())
+  creatorId  String
+  creator    Creator       @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  channel    Platform
+  subject    String?
+  body       String
+  status     MessageStatus @default(DRAFT)
+  isFollowUp Boolean       @default(false)
+  sentAt     DateTime?
+  sentById   String?
+  sentBy     User?         @relation(fields: [sentById], references: [id], onDelete: SetNull)
+  resendId   String?
+  error      String?
+  createdAt  DateTime      @default(now())
+
+  @@index([creatorId])
+}
+
+model Post {
+  id        String    @id @default(cuid())
+  creatorId String
+  creator   Creator   @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  url       String
+  postedAt  DateTime  @default(now())
+  views     Int?
+  likes     Int?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([creatorId])
+}
+
+model Activity {
+  id        String   @id @default(cuid())
+  creatorId String
+  creator   Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([creatorId])
+}
