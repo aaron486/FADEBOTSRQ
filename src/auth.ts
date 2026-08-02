@@ -11,10 +11,17 @@ const devLoginEnabled =
 
 async function isAllowed(email: string | null | undefined): Promise<boolean> {
   if (!email) return false;
-  const found = await prisma.allowedEmail.findUnique({
-    where: { email: email.toLowerCase() },
-  });
-  return !!found;
+  const normalized = email.toLowerCase();
+  const found = await prisma.allowedEmail.findUnique({ where: { email: normalized } });
+  if (found) return true;
+  // Bootstrap: on a fresh database with an empty allowlist, admit the admin
+  // email from the environment and record it, so no manual seeding is needed.
+  const admin = process.env.SEED_ADMIN_EMAIL?.toLowerCase();
+  if (admin && normalized === admin && (await prisma.allowedEmail.count()) === 0) {
+    await prisma.allowedEmail.create({ data: { email: normalized, addedBy: "bootstrap" } });
+    return true;
+  }
+  return false;
 }
 
 const providers: Provider[] = [
