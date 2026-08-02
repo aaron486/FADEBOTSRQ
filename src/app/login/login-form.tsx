@@ -3,14 +3,39 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 
-export function LoginForm({ devLoginEnabled }: { devLoginEnabled: boolean }) {
+export function LoginForm({
+  devLoginEnabled,
+  passwordLoginEnabled,
+  magicLinkEnabled,
+}: {
+  devLoginEnabled: boolean;
+  passwordLoginEnabled: boolean;
+  magicLinkEnabled: boolean;
+}) {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState("");
 
-  async function magicLink(e: React.FormEvent) {
+  async function passwordLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !password) return;
+    setStatus("sending");
+    setError("");
+    const res = await signIn("team-password", { email, password, redirect: false });
+    if (res?.error) {
+      setStatus("error");
+      setError("Sign-in failed — check the password, and that your email is on the allowlist.");
+    } else {
+      window.location.href = "/";
+    }
+  }
+
+  async function magicLink() {
+    if (!email) {
+      setError("Enter your email first.");
+      return;
+    }
     setStatus("sending");
     setError("");
     const res = await signIn("resend", { email, redirect: false });
@@ -23,7 +48,10 @@ export function LoginForm({ devLoginEnabled }: { devLoginEnabled: boolean }) {
   }
 
   async function devLogin() {
-    if (!email) return;
+    if (!email) {
+      setError("Enter your email first.");
+      return;
+    }
     setStatus("sending");
     setError("");
     const res = await signIn("dev-login", { email, redirect: false });
@@ -50,7 +78,7 @@ export function LoginForm({ devLoginEnabled }: { devLoginEnabled: boolean }) {
   }
 
   return (
-    <form onSubmit={magicLink} className="space-y-3">
+    <form onSubmit={passwordLogin} className="space-y-3">
       <div>
         <label htmlFor="email" className="field-label">
           Work email
@@ -65,15 +93,65 @@ export function LoginForm({ devLoginEnabled }: { devLoginEnabled: boolean }) {
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
-      <button type="submit" className="btn btn-primary w-full justify-center" disabled={status === "sending"}>
-        {status === "sending" ? "Sending…" : "Email me a sign-in link"}
-      </button>
+
+      {passwordLoginEnabled && (
+        <>
+          <div>
+            <label htmlFor="password" className="field-label">
+              Team password
+            </label>
+            <input
+              id="password"
+              type="password"
+              className="input"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+          <button
+            type="submit"
+            className="btn btn-primary w-full justify-center"
+            disabled={status === "sending"}
+          >
+            {status === "sending" ? "Signing in…" : "Sign in"}
+          </button>
+        </>
+      )}
+
+      {magicLinkEnabled && (
+        <button
+          type={passwordLoginEnabled ? "button" : "submit"}
+          className={`btn w-full justify-center ${passwordLoginEnabled ? "" : "btn-primary"}`}
+          onClick={magicLink}
+          disabled={status === "sending"}
+        >
+          {status === "sending" ? "Sending…" : "Email me a sign-in link"}
+        </button>
+      )}
+
+      {!passwordLoginEnabled && !magicLinkEnabled && !devLoginEnabled && (
+        <p className="text-xs text-center" style={{ color: "var(--critical)" }}>
+          No sign-in method is configured. Set APP_PASSWORD (team password) or RESEND_API_KEY
+          (email links) in the server environment.
+        </p>
+      )}
+
       {devLoginEnabled && (
-        <button type="button" className="btn w-full justify-center" onClick={devLogin} disabled={status === "sending"}>
+        <button
+          type="button"
+          className="btn w-full justify-center"
+          onClick={devLogin}
+          disabled={status === "sending"}
+        >
           Dev login (no email)
         </button>
       )}
-      {error && <p className="text-xs" style={{ color: "var(--critical)" }}>{error}</p>}
+      {error && (
+        <p className="text-xs" style={{ color: "var(--critical)" }}>
+          {error}
+        </p>
+      )}
     </form>
   );
 }

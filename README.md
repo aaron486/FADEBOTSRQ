@@ -15,7 +15,7 @@ An internal dashboard for managing creator partnerships end to end:
 - **Post tracking** — post URLs with views/likes, editable as numbers come in
 - **KPIs** — committed spend, paid out, awaiting reply, total views, cost per 1k views
 - **Activity log** per creator — stage changes, sends, payments, and manual notes, with who did what
-- **Team access** — magic-link sign-in restricted to an allowlist you manage in Settings
+- **Team access** — sign-in restricted to an allowlist you manage in Settings, via a shared team password (`APP_PASSWORD`) and/or email magic links (Resend)
 - Light/dark theme
 
 ## Stack
@@ -42,30 +42,35 @@ Dev conveniences (no external accounts needed):
 
 ## Deploying to production
 
-1. **Postgres** — create a database (Supabase, Neon, Vercel Postgres, …) and note the connection string.
-2. **Resend** — create an account, **verify your sending domain** (e.g. `fade.bet`) under Domains, and create an API key. This one key powers both login magic links and outreach email.
-3. **Deploy** the repo to Vercel (or any Node host) with these environment variables:
+Minimum viable deploy (no Resend needed — password sign-in, outreach emails simulated):
+
+1. **Postgres** — create a database (Vercel Storage → Neon is the easiest, it auto-adds `DATABASE_URL`; Supabase/Neon direct also work).
+2. **Deploy** the repo to Vercel (or any Node host) with these environment variables:
 
    | Variable | Value |
    |---|---|
-   | `DATABASE_URL` | your Postgres connection string |
+   | `DATABASE_URL` | your Postgres connection string (auto-added if using Vercel Storage) |
    | `AUTH_SECRET` | `openssl rand -base64 32` |
-   | `AUTH_URL` | your deployed URL |
-   | `AUTH_TRUST_HOST` | `true` |
+   | `APP_PASSWORD` | the shared team password |
+   | `SEED_ADMIN_EMAIL` | your email (auto-allowlisted on first sign-in) |
+
+   Do **not** set `AUTH_DEV_LOGIN` in production. The build runs `prisma migrate deploy`
+   automatically, so the database schema is created on first deploy — no manual step.
+
+3. Sign in with `SEED_ADMIN_EMAIL` + the team password, then invite teammates from **Settings**.
+
+Enabling real email later (login links + actual outreach sending):
+
+1. **Resend** — create an account, create an API key, and **verify your sending domain** (e.g. `fade.bet`) under Domains.
+2. Add env vars and redeploy:
+
+   | Variable | Value |
+   |---|---|
    | `RESEND_API_KEY` | from Resend |
-   | `EMAIL_FROM` | e.g. `FADE <outreach@fade.bet>` |
-   | `SEED_ADMIN_EMAIL` | your email (first allowlisted account) |
+   | `EMAIL_FROM` | e.g. `FADE <outreach@fade.bet>` (or `FADE <onboarding@resend.dev>` before domain verification — delivers only to your own Resend signup email) |
 
-   Do **not** set `AUTH_DEV_LOGIN` in production.
-
-4. **Migrate + seed** once against the production database:
-
-   ```bash
-   DATABASE_URL=... npm run db:migrate
-   DATABASE_URL=... SEED_ADMIN_EMAIL=you@fade.bet npm run db:seed
-   ```
-
-5. Sign in with your email, then invite teammates from **Settings**.
+   The login page gains "Email me a sign-in link" and the composer's **Send email** goes live.
+   You can then remove `APP_PASSWORD` if you want email-link sign-in only.
 
 ## Project layout
 

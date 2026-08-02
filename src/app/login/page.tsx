@@ -8,6 +8,10 @@ export default async function LoginPage() {
 
   const devLoginEnabled =
     process.env.AUTH_DEV_LOGIN === "true" && process.env.NODE_ENV !== "production";
+  const passwordLoginEnabled = !!process.env.APP_PASSWORD;
+  // Magic links need Resend in production; in dev they log to the console.
+  const magicLinkEnabled =
+    !!process.env.RESEND_API_KEY || process.env.NODE_ENV !== "production";
 
   return (
     <main className="min-h-screen flex items-center justify-center p-6">
@@ -16,7 +20,11 @@ export default async function LoginPage() {
           <div className="text-2xl font-extrabold tracking-[0.14em]">FADE</div>
           <div className="text-sm text-ink-3">Creator Tracker</div>
         </div>
-        <LoginForm devLoginEnabled={devLoginEnabled} />
+        <LoginForm
+          devLoginEnabled={devLoginEnabled}
+          passwordLoginEnabled={passwordLoginEnabled}
+          magicLinkEnabled={magicLinkEnabled}
+        />
         <p className="mt-5 text-xs text-ink-3 text-center">
           Access is invite-only. Ask a teammate to add your email in Settings.
         </p>

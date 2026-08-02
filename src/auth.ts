@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "crypto";
 import NextAuth from "next-auth";
 import type { Provider } from "next-auth/providers";
 import Credentials from "next-auth/providers/credentials";
@@ -6,15 +7,28 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 
+function safeEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ab.length === bb.length && timingSafeEqual(ab, bb);
+}
+
 const devLoginEnabled =
   process.env.AUTH_DEV_LOGIN === "true" && process.env.NODE_ENV !== "production";
 
 async function isAllowed(email: string | null | undefined): Promise<boolean> {
   if (!email) return false;
-  const found = await prisma.allowedEmail.findUnique({
-    where: { email: email.toLowerCase() },
-  });
-  return !!found;
+  const normalized = email.toLowerCase();
+  const found = await prisma.allowedEmail.findUnique({ where: { email: normalized } });
+  if (found) return true;
+  // Bootstrap: on a fresh database with an empty allowlist, admit the admin
+  // email from the environment and record it, so no manual seeding is needed.
+  const admin = process.env.SEED_ADMIN_EMAIL?.toLowerCase();
+  if (admin && normalized === admin && (await prisma.allowedEmail.count()) === 0) {
+    await prisma.allowedEmail.create({ data: { email: normalized, addedBy: "bootstrap" } });
+    return true;
+  }
+  return false;
 }
 
 const providers: Provider[] = [
@@ -34,6 +48,32 @@ const providers: Provider[] = [
     },
   }),
 ];
+
+// Shared team password login — lets the team use the app before email
+// sending (Resend) is configured. Enabled by setting APP_PASSWORD.
+if (process.env.APP_PASSWORD) {
+  providers.push(
+    Credentials({
+      id: "team-password",
+      name: "Team password",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(credentials) {
+        const email = String(credentials?.email ?? "").toLowerCase().trim();
+        const password = String(credentials?.password ?? "");
+        if (!email || !password || !safeEqual(password, process.env.APP_PASSWORD!)) return null;
+        if (!(await isAllowed(email))) return null;
+        return prisma.user.upsert({
+          where: { email },
+          update: {},
+          create: { email, name: email.split("@")[0] },
+        });
+      },
+    })
+  );
+}
 
 if (devLoginEnabled) {
   providers.push(
