@@ -24,6 +24,7 @@ export default async function CreatorPage({
 
   return (
     <CreatorDetail
+      aiEnabled={!!process.env.ANTHROPIC_API_KEY}
       creator={{
         id: creator.id,
         name: creator.name,
