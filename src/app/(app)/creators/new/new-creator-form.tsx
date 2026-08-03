@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Platform, PLATFORMS, fmtNum } from "@/lib/creator-meta";
+import { Platform, fmtNum } from "@/lib/creator-meta";
 import { createCreator } from "@/lib/actions/creators";
 import { lookupCreator, LookupResult } from "@/lib/actions/lookup";
 
@@ -10,10 +10,15 @@ type Found = Extract<LookupResult, { ok: true }>;
 
 export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
   const router = useRouter();
-  const [platform, setPlatform] = useState<Platform>("INSTAGRAM");
   const [name, setName] = useState("");
-  const [handle, setHandle] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [x, setX] = useState("");
+  const [tiktok, setTiktok] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [agencyName, setAgencyName] = useState("");
+  const [agencyContact, setAgencyContact] = useState("");
+  const [primary, setPrimary] = useState<Platform | "">("");
   const [followers, setFollowers] = useState("");
   const [niche, setNiche] = useState("");
   const [notes, setNotes] = useState("");
@@ -21,15 +26,52 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
   const [pending, startTransition] = useTransition();
 
   const [searching, setSearching] = useState(false);
-  const [result, setResult] = useState<Found | null>(null);
-  const [picked, setPicked] = useState<"instagram" | "x" | null>(null);
+  const [lookupNote, setLookupNote] = useState("");
 
-  const isEmail = PLATFORMS[platform].isEmail;
+  const channelOptions: { key: Platform; label: string; has: boolean }[] = [
+    { key: "INSTAGRAM", label: "Instagram", has: !!instagram.trim() },
+    { key: "X", label: "X", has: !!x.trim() },
+    { key: "TIKTOK", label: "TikTok", has: !!tiktok.trim() },
+    { key: "EMAIL", label: "Email", has: !!email.trim() },
+  ];
+  const available = channelOptions.filter((c) => c.has);
+  const effectivePrimary: Platform | "" =
+    primary && available.some((c) => c.key === primary) ? primary : (available[0]?.key ?? "");
+
+  function applyLookup(res: Found) {
+    setName(res.name);
+    if (res.instagram) setInstagram(res.instagram.handle);
+    if (res.x) setX(res.x.handle);
+    if (res.tiktok) setTiktok(res.tiktok.handle);
+    if (res.email) setEmail(res.email);
+    if (res.niche) setNiche(res.niche);
+    // Primary = biggest audience; followers field takes that count.
+    const hits = [
+      { key: "INSTAGRAM" as Platform, f: res.instagram?.followers ?? -1 },
+      { key: "X" as Platform, f: res.x?.followers ?? -1 },
+      { key: "TIKTOK" as Platform, f: res.tiktok?.followers ?? -1 },
+    ].filter((h) => h.f >= 0 || (h.key === "INSTAGRAM" && res.instagram) || (h.key === "X" && res.x) || (h.key === "TIKTOK" && res.tiktok));
+    hits.sort((a, b) => b.f - a.f);
+    if (hits[0]) {
+      setPrimary(hits[0].key);
+      if (hits[0].f > 0) setFollowers(String(hits[0].f));
+    }
+    const counts = [
+      res.instagram?.followers != null ? `IG ~${fmtNum(res.instagram.followers)}` : null,
+      res.x?.followers != null ? `X ~${fmtNum(res.x.followers)}` : null,
+      res.tiktok?.followers != null ? `TikTok ~${fmtNum(res.tiktok.followers)}` : null,
+    ].filter(Boolean);
+    setLookupNote(
+      [counts.length ? `Found: ${counts.join(" · ")} (approximate)` : "Profiles found.", res.note]
+        .filter(Boolean)
+        .join(" — ")
+    );
+  }
 
   function doLookup() {
     if (!name.trim() || searching) return;
     setError("");
-    setResult(null);
+    setLookupNote("");
     setSearching(true);
     startTransition(async () => {
       const res = await lookupCreator(name);
@@ -39,52 +81,29 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
         setError(`Couldn't confidently find public profiles for "${name}" — you can still add them manually.`);
         return;
       }
-      setResult(res);
-      setName(res.name);
-      if (res.niche) setNiche(res.niche);
-      if (res.email) setEmail(res.email);
-      // Default to the bigger profile (Instagram wins ties).
-      const primary =
-        res.instagram && res.x
-          ? (res.x.followers ?? 0) > (res.instagram.followers ?? 0)
-            ? "x"
-            : "instagram"
-          : res.instagram
-            ? "instagram"
-            : "x";
-      applyProfile(res, primary);
+      applyLookup(res);
     });
-  }
-
-  function applyProfile(res: Found, which: "instagram" | "x") {
-    const profile = which === "instagram" ? res.instagram : res.x;
-    const other = which === "instagram" ? res.x : res.instagram;
-    if (!profile) return;
-    setPicked(which);
-    setPlatform(which === "instagram" ? "INSTAGRAM" : "X");
-    setHandle(profile.handle);
-    setFollowers(profile.followers != null ? String(profile.followers) : "");
-    const extras = [
-      other
-        ? `Also on ${which === "instagram" ? "X" : "Instagram"}: ${other.handle}${
-            other.followers != null ? ` (~${fmtNum(other.followers)} followers)` : ""
-          }`
-        : null,
-      res.note,
-    ].filter(Boolean);
-    setNotes(extras.join("\n"));
   }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    if (!effectivePrimary) {
+      setError("Add at least one contact channel (IG, X, TikTok, or email).");
+      return;
+    }
     startTransition(async () => {
       // createCreator redirects to the new creator's page on success
       const res = await createCreator({
         name,
-        platform,
-        handle,
-        email: isEmail ? null : email || null,
+        instagramHandle: instagram || null,
+        xHandle: x || null,
+        tiktokHandle: tiktok || null,
+        email: email || null,
+        phone: phone || null,
+        primaryPlatform: effectivePrimary,
+        agencyName: agencyName || null,
+        agencyContact: agencyContact || null,
         followers: followers === "" ? null : Number(followers),
         niche: niche || null,
         notes: notes || null,
@@ -102,30 +121,25 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
           <input
             id="name"
             className="input flex-1"
-            placeholder={aiEnabled ? `e.g. "Lil Baby" — then hit Find profiles` : "Creator name (defaults to handle)"}
+            placeholder={aiEnabled ? `e.g. "Lil Baby" — then hit Find profiles` : "Creator name"}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && aiEnabled && !handle) {
+              if (e.key === "Enter" && aiEnabled && available.length === 0) {
                 e.preventDefault();
                 doLookup();
               }
             }}
           />
           {aiEnabled && (
-            <button
-              type="button"
-              className="btn"
-              onClick={doLookup}
-              disabled={searching || !name.trim()}
-            >
+            <button type="button" className="btn" onClick={doLookup} disabled={searching || !name.trim()}>
               {searching ? "Searching…" : "🔍 Find profiles"}
             </button>
           )}
         </div>
-        {aiEnabled && (
+        {aiEnabled && !searching && !lookupNote && (
           <p className="text-[11px] text-ink-3 mt-1">
-            Searches the web for their official Instagram/X handles, follower counts, niche, and public contact email.
+            Searches the web for their official Instagram, X, and TikTok handles, follower counts, niche, and public contact email.
           </p>
         )}
         {searching && (
@@ -133,119 +147,79 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
             Searching the web for {name}&apos;s official profiles — this takes a few seconds…
           </p>
         )}
+        {lookupNote && (
+          <p className="text-xs mt-2" style={{ color: "var(--good-text)" }}>
+            {lookupNote}
+          </p>
+        )}
       </div>
 
-      {/* Lookup results */}
-      {result && (
-        <div className="rounded-lg p-3 space-y-2" style={{ background: "var(--page)", border: "1px solid var(--grid)" }}>
-          <div className="text-xs font-semibold text-ink-2">
-            Found profiles — pick the primary one
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {result.instagram && (
-              <button
-                type="button"
-                className="btn btn-sm"
-                style={picked === "instagram" ? { borderColor: "var(--accent)", outline: "1px solid var(--accent)" } : undefined}
-                onClick={() => applyProfile(result, "instagram")}
-              >
-                Instagram {result.instagram.handle}
-                {result.instagram.followers != null && ` · ${fmtNum(result.instagram.followers)}`}
-              </button>
-            )}
-            {result.x && (
-              <button
-                type="button"
-                className="btn btn-sm"
-                style={picked === "x" ? { borderColor: "var(--accent)", outline: "1px solid var(--accent)" } : undefined}
-                onClick={() => applyProfile(result, "x")}
-              >
-                X {result.x.handle}
-                {result.x.followers != null && ` · ${fmtNum(result.x.followers)}`}
-              </button>
-            )}
-          </div>
-          <p className="text-[11px] text-ink-3">
-            Follower counts are approximate. Double-check the handle before your first outreach.
-            {result.note ? ` Note: ${result.note}` : ""}
-          </p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="field-label" htmlFor="platform">Platform</label>
-          <select
-            id="platform"
-            className="input"
-            value={platform}
-            onChange={(e) => setPlatform(e.target.value as Platform)}
-          >
-            {Object.entries(PLATFORMS).map(([k, v]) => (
-              <option key={k} value={k}>{v.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="field-label" htmlFor="handle">
-            {isEmail ? "Email address" : "Handle"}
-          </label>
-          <input
-            id="handle"
-            className="input"
-            required
-            type={isEmail ? "email" : "text"}
-            placeholder={PLATFORMS[platform].handlePlaceholder}
-            value={handle}
-            onChange={(e) => setHandle(e.target.value)}
-          />
-        </div>
-        {!isEmail && (
+      {/* Contact channels */}
+      <div>
+        <div className="field-label">Contact channels — add any or all</div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="field-label" htmlFor="email">Email (optional)</label>
-            <input
-              id="email"
-              className="input"
-              type="email"
-              placeholder="For sending outreach by email too"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <label className="field-label" htmlFor="instagram">Instagram</label>
+            <input id="instagram" className="input" placeholder="@handle" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
           </div>
-        )}
+          <div>
+            <label className="field-label" htmlFor="x">X</label>
+            <input id="x" className="input" placeholder="@handle" value={x} onChange={(e) => setX(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="tiktok">TikTok</label>
+            <input id="tiktok" className="input" placeholder="@handle" value={tiktok} onChange={(e) => setTiktok(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="email">Email</label>
+            <input id="email" className="input" type="email" placeholder="creator@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="phone">Phone</label>
+            <input id="phone" className="input" type="tel" placeholder="+1 555 000 0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="primary">Primary outreach channel</label>
+            <select
+              id="primary"
+              className="input"
+              value={effectivePrimary}
+              onChange={(e) => setPrimary(e.target.value as Platform)}
+            >
+              {available.length === 0 && <option value="">Add a channel first…</option>}
+              {available.map((c) => (
+                <option key={c.key} value={c.key}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Agency */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="field-label" htmlFor="followers">Followers</label>
-          <input
-            id="followers"
-            className="input"
-            type="number"
-            min={0}
-            placeholder="e.g. 45000"
-            value={followers}
-            onChange={(e) => setFollowers(e.target.value)}
-          />
+          <label className="field-label" htmlFor="agencyName">Agency (optional)</label>
+          <input id="agencyName" className="input" placeholder="e.g. QC / WME" value={agencyName} onChange={(e) => setAgencyName(e.target.value)} />
+        </div>
+        <div>
+          <label className="field-label" htmlFor="agencyContact">Agency contact</label>
+          <input id="agencyContact" className="input" placeholder="agent name, email, or phone" value={agencyContact} onChange={(e) => setAgencyContact(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="field-label" htmlFor="followers">Followers (primary channel)</label>
+          <input id="followers" className="input" type="number" min={0} placeholder="e.g. 45000" value={followers} onChange={(e) => setFollowers(e.target.value)} />
         </div>
         <div>
           <label className="field-label" htmlFor="niche">Niche</label>
-          <input
-            id="niche"
-            className="input"
-            placeholder="e.g. sports betting, comedy"
-            value={niche}
-            onChange={(e) => setNiche(e.target.value)}
-          />
+          <input id="niche" className="input" placeholder="e.g. sports betting, comedy" value={niche} onChange={(e) => setNiche(e.target.value)} />
         </div>
       </div>
       <div>
         <label className="field-label" htmlFor="notes">Notes</label>
-        <textarea
-          id="notes"
-          className="input"
-          rows={3}
-          placeholder="Anything worth remembering"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
+        <textarea id="notes" className="input" rows={3} placeholder="Anything worth remembering" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
       {error && <p className="text-xs" style={{ color: "var(--critical)" }}>{error}</p>}
       <div className="flex justify-end gap-2">

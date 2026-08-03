@@ -66,8 +66,8 @@ async function main() {
       await prisma.creator.create({
         data: {
           name: "Jake Parlay",
-          platform: "INSTAGRAM",
-          handle: "@jakeparlay",
+          instagramHandle: "@jakeparlay",
+          primaryPlatform: "INSTAGRAM",
           followers: 48000,
           niche: "Sports betting picks",
           stage: "OUTREACH_SENT",
@@ -86,8 +86,8 @@ async function main() {
       await prisma.creator.create({
         data: {
           name: "Sasha Odds",
-          platform: "X",
-          handle: "@sashaodds",
+          xHandle: "@sashaodds",
+          primaryPlatform: "X",
           followers: 120000,
           niche: "NFL analysis",
           stage: "CONFIRMED",
@@ -98,8 +98,8 @@ async function main() {
       await prisma.creator.create({
         data: {
           name: "Miles Green",
-          platform: "EMAIL",
-          handle: "miles@example.com",
+          email: "miles@example.com",
+          primaryPlatform: "EMAIL",
           followers: 30000,
           niche: "Fantasy football newsletter",
           stage: "POSTED",

@@ -2,7 +2,7 @@
 // Kept free of Prisma imports so it can ship in the client bundle; the string
 // literal types match the Prisma enums exactly.
 
-export type Platform = "INSTAGRAM" | "X" | "EMAIL";
+export type Platform = "INSTAGRAM" | "X" | "TIKTOK" | "EMAIL";
 export type Stage =
   | "TO_CONTACT"
   | "OUTREACH_SENT"
@@ -35,55 +35,83 @@ export const CONTRACT_STATUSES: { key: ContractStatus; label: string }[] = [
 
 export const PLATFORMS: Record<
   Platform,
-  { label: string; isEmail: boolean; handlePlaceholder: string }
+  { label: string; short: string; isEmail: boolean; handlePlaceholder: string }
 > = {
-  INSTAGRAM: { label: "Instagram", isEmail: false, handlePlaceholder: "@handle" },
-  X: { label: "X", isEmail: false, handlePlaceholder: "@handle" },
-  EMAIL: { label: "Email", isEmail: true, handlePlaceholder: "creator@example.com" },
+  INSTAGRAM: { label: "Instagram", short: "IG", isEmail: false, handlePlaceholder: "@handle" },
+  X: { label: "X", short: "X", isEmail: false, handlePlaceholder: "@handle" },
+  TIKTOK: { label: "TikTok", short: "TT", isEmail: false, handlePlaceholder: "@handle" },
+  EMAIL: { label: "Email", short: "✉", isEmail: true, handlePlaceholder: "creator@example.com" },
 };
 
-const stripAt = (h: string) => h.replace(/^@/, "").trim();
+/** The contact-channel fields every serialized creator carries. */
+export type ContactFields = {
+  instagramHandle: string | null;
+  xHandle: string | null;
+  tiktokHandle: string | null;
+  email: string | null;
+  phone: string | null;
+  primaryPlatform: Platform;
+};
 
-export function contactLabel(c: { platform: Platform; handle: string }): string {
-  return c.platform === "EMAIL" ? c.handle : `@${stripAt(c.handle)}`;
+export type ChannelInfo = { platform: Platform; handle: string };
+
+const stripAt = (h: string) => h.replace(/^@/, "").trim();
+const at = (h: string) => `@${stripAt(h)}`;
+
+/** All channels this creator has, social first, in a stable order. */
+export function channels(c: ContactFields): ChannelInfo[] {
+  const out: ChannelInfo[] = [];
+  if (c.instagramHandle?.trim()) out.push({ platform: "INSTAGRAM", handle: at(c.instagramHandle) });
+  if (c.xHandle?.trim()) out.push({ platform: "X", handle: at(c.xHandle) });
+  if (c.tiktokHandle?.trim()) out.push({ platform: "TIKTOK", handle: at(c.tiktokHandle) });
+  if (c.email?.trim()) out.push({ platform: "EMAIL", handle: c.email.trim() });
+  return out;
 }
 
-export function profileUrl(c: { platform: Platform; handle: string }): string {
-  switch (c.platform) {
+/** The creator's primary channel — falls back to the first one on file. */
+export function primaryChannel(c: ContactFields): ChannelInfo | null {
+  const all = channels(c);
+  return all.find((ch) => ch.platform === c.primaryPlatform) ?? all[0] ?? null;
+}
+
+export function contactLabel(c: ContactFields): string {
+  return primaryChannel(c)?.handle ?? "—";
+}
+
+export function profileUrl(platform: Platform, handle: string): string {
+  switch (platform) {
     case "INSTAGRAM":
-      return `https://instagram.com/${stripAt(c.handle)}`;
+      return `https://instagram.com/${stripAt(handle)}`;
     case "X":
-      return `https://x.com/${stripAt(c.handle)}`;
+      return `https://x.com/${stripAt(handle)}`;
+    case "TIKTOK":
+      return `https://www.tiktok.com/@${stripAt(handle)}`;
     case "EMAIL":
-      return `mailto:${c.handle}`;
+      return `mailto:${handle}`;
   }
 }
 
-/** Best-effort deep link straight to the DM surface. */
-export function dmUrl(c: { platform: Platform; handle: string }): string {
-  switch (c.platform) {
+/** Best-effort deep link toward the DM surface for a channel. */
+export function dmUrl(platform: Platform, handle: string): string {
+  switch (platform) {
     case "INSTAGRAM":
-      return `https://ig.me/m/${stripAt(c.handle)}`;
+      return `https://ig.me/m/${stripAt(handle)}`;
     case "X":
       return "https://x.com/messages";
+    case "TIKTOK":
+      // No public per-user DM deep link — land on the profile.
+      return `https://www.tiktok.com/@${stripAt(handle)}`;
     case "EMAIL":
-      return `mailto:${c.handle}`;
+      return `mailto:${handle}`;
   }
 }
 
-export function fillTemplate(
-  text: string,
-  c: { name: string; platform: Platform; handle: string }
-): string {
+export function fillTemplate(text: string, c: { name: string } & ContactFields): string {
+  const primary = primaryChannel(c);
   return text
     .replace(/\{name\}/g, c.name || "there")
-    .replace(/\{handle\}/g, contactLabel(c))
-    .replace(/\{platform\}/g, PLATFORMS[c.platform].label);
-}
-
-/** The email address outreach goes to: the handle itself for EMAIL creators, else the backup email. */
-export function outreachEmail(c: { platform: Platform; handle: string; email: string | null }) {
-  return c.platform === "EMAIL" ? c.handle : c.email;
+    .replace(/\{handle\}/g, primary?.handle ?? c.name ?? "")
+    .replace(/\{platform\}/g, primary ? PLATFORMS[primary.platform].label : "");
 }
 
 export const fmtMoneyCents = (cents: number | null | undefined) =>

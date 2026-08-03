@@ -10,7 +10,7 @@ import {
   stageMeta,
   PLATFORMS,
   CONTRACT_STATUSES,
-  contactLabel,
+  channels,
   profileUrl,
   fmtNum,
   fmtDate,
@@ -31,9 +31,14 @@ import { Composer } from "@/components/composer";
 export type CreatorDetailData = {
   id: string;
   name: string;
-  platform: Platform;
-  handle: string;
+  instagramHandle: string | null;
+  xHandle: string | null;
+  tiktokHandle: string | null;
   email: string | null;
+  phone: string | null;
+  primaryPlatform: Platform;
+  agencyName: string | null;
+  agencyContact: string | null;
   followers: number | null;
   niche: string | null;
   notes: string | null;
@@ -107,15 +112,29 @@ export function CreatorDetail({
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/" className="btn btn-ghost btn-sm">← Dashboard</Link>
         <h1 className="text-xl font-bold">{creator.name}</h1>
-        <a
-          href={profileUrl(creator)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:underline text-sm"
-          style={{ color: "var(--accent)" }}
-        >
-          {PLATFORMS[creator.platform].label} · {contactLabel(creator)}
-        </a>
+        <span className="flex flex-wrap items-center gap-2 text-sm">
+          {channels(creator).map((ch) => (
+            <a
+              key={ch.platform}
+              href={profileUrl(ch.platform, ch.handle)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:underline"
+              style={{
+                color: "var(--accent)",
+                fontWeight: ch.platform === creator.primaryPlatform ? 600 : 400,
+              }}
+              title={ch.platform === creator.primaryPlatform ? "Primary channel" : undefined}
+            >
+              {PLATFORMS[ch.platform].label} {ch.handle}
+            </a>
+          ))}
+          {creator.phone && (
+            <a href={`tel:${creator.phone}`} className="text-ink-2 hover:underline">
+              ☎ {creator.phone}
+            </a>
+          )}
+        </span>
         <span className="inline-flex items-center gap-1.5 ml-auto text-sm">
           <span className="dot" style={{ background: s.colorVar }} />
           <select
@@ -138,7 +157,7 @@ export function CreatorDetail({
           <PostsSection creator={creator} posts={posts} />
         </div>
         <div className="space-y-4">
-          <Section title={`Outreach — ${PLATFORMS[creator.platform].isEmail ? "email" : "DM"}`}>
+          <Section title="Outreach">
             <Composer
               creator={creator}
               templates={templates}
@@ -159,69 +178,95 @@ export function CreatorDetail({
 function ProfileSection({ creator }: { creator: CreatorDetailData }) {
   const [form, setForm] = useState({
     name: creator.name,
-    platform: creator.platform,
-    handle: creator.handle,
+    instagram: creator.instagramHandle ?? "",
+    x: creator.xHandle ?? "",
+    tiktok: creator.tiktokHandle ?? "",
     email: creator.email ?? "",
+    phone: creator.phone ?? "",
+    primary: creator.primaryPlatform,
+    agencyName: creator.agencyName ?? "",
+    agencyContact: creator.agencyContact ?? "",
     followers: creator.followers?.toString() ?? "",
     niche: creator.niche ?? "",
     notes: creator.notes ?? "",
   });
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
-  const isEmail = PLATFORMS[form.platform].isEmail;
+  const [error, setError] = useState("");
+
+  const available: { key: Platform; label: string }[] = [
+    { key: "INSTAGRAM" as Platform, label: "Instagram", has: !!form.instagram.trim() },
+    { key: "X" as Platform, label: "X", has: !!form.x.trim() },
+    { key: "TIKTOK" as Platform, label: "TikTok", has: !!form.tiktok.trim() },
+    { key: "EMAIL" as Platform, label: "Email", has: !!form.email.trim() },
+  ].filter((c) => c.has);
 
   function save() {
+    setError("");
     startTransition(async () => {
-      await updateCreatorProfile(creator.id, {
+      const res = await updateCreatorProfile(creator.id, {
         name: form.name,
-        platform: form.platform,
-        handle: form.handle,
+        instagramHandle: form.instagram || null,
+        xHandle: form.x || null,
+        tiktokHandle: form.tiktok || null,
         email: form.email || null,
+        phone: form.phone || null,
+        primaryPlatform: form.primary,
+        agencyName: form.agencyName || null,
+        agencyContact: form.agencyContact || null,
         followers: form.followers === "" ? null : Number(form.followers),
         niche: form.niche || null,
         notes: form.notes || null,
       });
+      if (!res.ok) return setError(res.error);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     });
   }
 
   return (
-    <Section title="Profile">
+    <Section title="Profile & contacts">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="field-label">Name</label>
           <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
         </div>
         <div>
-          <label className="field-label">Platform</label>
+          <label className="field-label">Primary outreach channel</label>
           <select
             className="input"
-            value={form.platform}
-            onChange={(e) => setForm({ ...form, platform: e.target.value as Platform })}
+            value={form.primary}
+            onChange={(e) => setForm({ ...form, primary: e.target.value as Platform })}
           >
-            {Object.entries(PLATFORMS).map(([k, v]) => (
-              <option key={k} value={k}>{v.label}</option>
-            ))}
+            {(available.length ? available : [{ key: form.primary, label: PLATFORMS[form.primary].label }]).map(
+              (c) => (
+                <option key={c.key} value={c.key}>{c.label}</option>
+              )
+            )}
           </select>
         </div>
         <div>
-          <label className="field-label">{isEmail ? "Email address" : "Handle"}</label>
-          <input
-            className="input"
-            placeholder={PLATFORMS[form.platform].handlePlaceholder}
-            value={form.handle}
-            onChange={(e) => setForm({ ...form, handle: e.target.value })}
-          />
+          <label className="field-label">Instagram</label>
+          <input className="input" placeholder="@handle" value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} />
         </div>
-        {!isEmail && (
-          <div>
-            <label className="field-label">Email (optional)</label>
-            <input className="input" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </div>
-        )}
         <div>
-          <label className="field-label">Followers</label>
+          <label className="field-label">X</label>
+          <input className="input" placeholder="@handle" value={form.x} onChange={(e) => setForm({ ...form, x: e.target.value })} />
+        </div>
+        <div>
+          <label className="field-label">TikTok</label>
+          <input className="input" placeholder="@handle" value={form.tiktok} onChange={(e) => setForm({ ...form, tiktok: e.target.value })} />
+        </div>
+        <div>
+          <label className="field-label">Email</label>
+          <input className="input" type="email" placeholder="creator@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+        </div>
+        <div>
+          <label className="field-label">Phone</label>
+          <input className="input" type="tel" placeholder="+1 555 000 0000" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+        </div>
+        <div>
+          <label className="field-label">Followers (primary)</label>
           <input
             className="input"
             type="number"
@@ -231,6 +276,14 @@ function ProfileSection({ creator }: { creator: CreatorDetailData }) {
           />
         </div>
         <div>
+          <label className="field-label">Agency</label>
+          <input className="input" placeholder="e.g. QC / WME" value={form.agencyName} onChange={(e) => setForm({ ...form, agencyName: e.target.value })} />
+        </div>
+        <div>
+          <label className="field-label">Agency contact</label>
+          <input className="input" placeholder="agent name, email, or phone" value={form.agencyContact} onChange={(e) => setForm({ ...form, agencyContact: e.target.value })} />
+        </div>
+        <div className="sm:col-span-2">
           <label className="field-label">Niche</label>
           <input className="input" value={form.niche} onChange={(e) => setForm({ ...form, niche: e.target.value })} />
         </div>
@@ -256,6 +309,7 @@ function ProfileSection({ creator }: { creator: CreatorDetailData }) {
           Delete creator
         </button>
         <span className="flex items-center gap-2">
+          {error && <span className="text-xs" style={{ color: "var(--critical)" }}>{error}</span>}
           {saved && <span className="text-xs" style={{ color: "var(--good-text)" }}>Saved</span>}
           <button className="btn btn-primary btn-sm" onClick={save} disabled={pending}>
             {pending ? "Saving…" : "Save profile"}

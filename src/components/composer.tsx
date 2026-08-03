@@ -5,8 +5,8 @@ import {
   Platform,
   PLATFORMS,
   fillTemplate,
+  channels,
   dmUrl,
-  outreachEmail,
 } from "@/lib/creator-meta";
 import { SCENARIOS, TONES, ToneKey, scenarioByKey } from "@/lib/scenarios";
 import { markDmSent, sendOutreachEmail } from "@/lib/actions/outreach";
@@ -25,11 +25,13 @@ export function Composer({
   hasSentBefore: boolean;
   aiEnabled: boolean;
 }) {
-  const emailTo = outreachEmail(creator);
-  const canDm = !PLATFORMS[creator.platform].isEmail;
-  // EMAIL creators only have the email channel; IG/X creators get an email
-  // channel too when a backup email is on file.
-  const [channel, setChannel] = useState<"dm" | "email">(canDm ? "dm" : "email");
+  const channelOptions = channels(creator);
+  const defaultChannel =
+    channelOptions.find((c) => c.platform === creator.primaryPlatform)?.platform ??
+    channelOptions[0]?.platform ??
+    "INSTAGRAM";
+
+  const [channel, setChannel] = useState<Platform>(defaultChannel);
   const [templateId, setTemplateId] = useState("");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
@@ -44,10 +46,13 @@ export function Composer({
   const [instructions, setInstructions] = useState("");
   const [aiBusy, setAiBusy] = useState(false);
 
-  const visibleTemplates = useMemo(() => {
-    const wantPlatform: Platform = channel === "email" ? "EMAIL" : creator.platform;
-    return templates.filter((t) => !t.platform || t.platform === wantPlatform);
-  }, [templates, channel, creator.platform]);
+  const isEmailChannel = channel === "EMAIL";
+  const channelHandle = channelOptions.find((c) => c.platform === channel)?.handle ?? "";
+
+  const visibleTemplates = useMemo(
+    () => templates.filter((t) => !t.platform || t.platform === channel),
+    [templates, channel]
+  );
 
   function flash(kind: "ok" | "err", text: string) {
     setFeedback({ kind, text });
@@ -57,12 +62,12 @@ export function Composer({
   /* ---- scenario library (works with no AI key) ---- */
 
   const scenario = scenarioByKey(scenarioKey);
-  const variantCount = scenario ? (channel === "email" ? scenario.email.length : scenario.dm.length) : 0;
+  const variantCount = scenario ? (isEmailChannel ? scenario.email.length : scenario.dm.length) : 0;
 
   function applyScenarioVariant(key: string, index: number) {
     const s = scenarioByKey(key);
     if (!s) return;
-    if (channel === "email") {
+    if (isEmailChannel) {
       const v = s.email[index % s.email.length];
       setSubject(fillTemplate(v.subject, creator));
       setBody(fillTemplate(v.body, creator));
@@ -101,7 +106,7 @@ export function Composer({
       setAiBusy(false);
       if (!res.ok) return flash("err", res.error);
       setBody(res.body);
-      if (channel === "email" && res.subject) setSubject(res.subject);
+      if (isEmailChannel && res.subject) setSubject(res.subject);
       flash("ok", mode === "reimagine" ? "Draft reimagined" : "Draft generated");
     });
   }
@@ -122,17 +127,15 @@ export function Composer({
     const suggested = scenario ? `${scenario.label} (custom)` : "Custom outreach";
     const name = window.prompt("Template name:", suggested);
     if (!name) return;
+    // Store the generic form so the template works for other creators.
+    let generic = body.split(creator.name).join("{name}");
+    if (channelHandle) generic = generic.split(channelHandle).join("{handle}");
     startTransition(async () => {
       const res = await createTemplate({
         name,
-        platform: channel === "email" ? "EMAIL" : creator.platform,
-        subject: channel === "email" ? subject || null : null,
-        // Store the generic form so the template works for other creators.
-        body: body
-          .split(creator.name)
-          .join("{name}")
-          .split(creator.handle)
-          .join("{handle}"),
+        platform: channel,
+        subject: isEmailChannel ? subject || null : null,
+        body: generic,
       });
       flash(res.ok ? "ok" : "err", res.ok ? `Saved as template "${name}"` : res.error);
     });
@@ -152,11 +155,10 @@ export function Composer({
 
   function doMarkSent() {
     startTransition(async () => {
-      const res = await markDmSent(creator.id, { body, isFollowUp });
-      if (res.ok) {
-        flash("ok", "Logged as sent — stage updated");
-        setIsFollowUp(true);
-      }
+      const res = await markDmSent(creator.id, { channel, body, isFollowUp });
+      if (!res.ok) return flash("err", res.error);
+      flash("ok", "Logged as sent — stage updated");
+      setIsFollowUp(true);
     });
   }
 
@@ -164,29 +166,37 @@ export function Composer({
     startTransition(async () => {
       const res = await sendOutreachEmail(creator.id, { subject, body, isFollowUp });
       if (!res.ok) return flash("err", res.error ?? "Send failed");
-      flash("ok", res.simulated ? "Email simulated (no RESEND_API_KEY set) and logged" : `Email sent to ${emailTo}`);
+      flash("ok", res.simulated ? "Email simulated (no RESEND_API_KEY set) and logged" : `Email sent to ${creator.email}`);
       setIsFollowUp(true);
     });
   }
 
   const busy = pending || aiBusy;
 
+  if (channelOptions.length === 0) {
+    return (
+      <p className="text-sm text-ink-2">
+        Add a contact channel (Instagram, X, TikTok, or email) in the profile to start outreach.
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-3">
-      {canDm && emailTo && (
+      {channelOptions.length > 1 && (
         <div className="flex rounded-lg overflow-hidden w-fit" style={{ border: "1px solid var(--edge)" }}>
-          {(["dm", "email"] as const).map((ch) => (
+          {channelOptions.map((ch) => (
             <button
-              key={ch}
-              onClick={() => setChannel(ch)}
+              key={ch.platform}
+              onClick={() => setChannel(ch.platform)}
               className="px-3 py-1 text-xs cursor-pointer"
               style={
-                channel === ch
+                channel === ch.platform
                   ? { background: "var(--accent)", color: "var(--accent-ink)", fontWeight: 600 }
                   : { background: "var(--surface-1)", color: "var(--text-secondary)" }
               }
             >
-              {ch === "dm" ? `${PLATFORMS[creator.platform].label} DM` : "Email"}
+              {ch.platform === "EMAIL" ? "Email" : `${PLATFORMS[ch.platform].label} DM`}
             </button>
           ))}
         </div>
@@ -263,7 +273,7 @@ export function Composer({
         <span className="text-xs text-ink-3">{"{name} {handle} {platform}"}</span>
       </div>
 
-      {channel === "email" && (
+      {isEmailChannel && (
         <div>
           <label className="field-label">Subject</label>
           <input
@@ -276,7 +286,9 @@ export function Composer({
       )}
 
       <div>
-        <label className="field-label">{channel === "email" ? `Email to ${emailTo ?? "—"}` : "DM draft"}</label>
+        <label className="field-label">
+          {isEmailChannel ? `Email to ${creator.email ?? "—"}` : `${PLATFORMS[channel].label} DM to ${channelHandle}`}
+        </label>
         <textarea
           className="input"
           rows={7}
@@ -297,11 +309,11 @@ export function Composer({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {channel === "dm" ? (
+        {!isEmailChannel ? (
           <>
             <button className="btn" onClick={copyDraft}>Copy draft</button>
-            <a className="btn" href={dmUrl(creator)} target="_blank" rel="noopener noreferrer">
-              Open {PLATFORMS[creator.platform].label} DMs ↗
+            <a className="btn" href={dmUrl(channel, channelHandle)} target="_blank" rel="noopener noreferrer">
+              Open {PLATFORMS[channel].label} ↗
             </a>
             <button className="btn btn-primary" onClick={doMarkSent} disabled={busy || !body.trim()}>
               {pending ? "Saving…" : "Mark as sent"}
@@ -311,7 +323,7 @@ export function Composer({
           <button
             className="btn btn-primary"
             onClick={doSendEmail}
-            disabled={busy || !body.trim() || !subject.trim() || !emailTo}
+            disabled={busy || !body.trim() || !subject.trim() || !creator.email}
           >
             {pending ? "Sending…" : `Send email`}
           </button>
@@ -325,9 +337,9 @@ export function Composer({
           </span>
         )}
       </div>
-      {channel === "dm" && (
+      {!isEmailChannel && (
         <p className="text-xs text-ink-3">
-          {`${PLATFORMS[creator.platform].label} doesn't allow sending DMs from outside apps — copy the draft, send it there, then mark it sent to track it here.`}
+          {`${PLATFORMS[channel].label} doesn't allow sending DMs from outside apps — copy the draft, send it there, then mark it sent to track it here.`}
         </p>
       )}
     </div>

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/auth";
 import { sendEmail } from "@/lib/email";
-import { PLATFORMS, Stage, stageIndex, outreachEmail, Platform } from "@/lib/creator-meta";
+import { PLATFORMS, Stage, stageIndex, Platform, channels } from "@/lib/creator-meta";
 
 function revalidateCreator(id: string) {
   revalidatePath("/");
@@ -23,18 +23,29 @@ async function advanceToSent(creatorId: string, currentStage: Stage) {
   }
 }
 
-/** Record that a DM was sent manually on IG/X (their APIs don't allow programmatic DMs). */
+/** Record that a DM was sent manually on IG/X/TikTok (their APIs don't allow programmatic DMs). */
 export async function markDmSent(
   creatorId: string,
-  input: { body: string; isFollowUp: boolean }
+  input: { channel: Platform; body: string; isFollowUp: boolean }
 ) {
   const user = await requireUser();
   const creator = await prisma.creator.findUniqueOrThrow({ where: { id: creatorId } });
+  const available = channels({
+    instagramHandle: creator.instagramHandle,
+    xHandle: creator.xHandle,
+    tiktokHandle: creator.tiktokHandle,
+    email: creator.email,
+    phone: creator.phone,
+    primaryPlatform: creator.primaryPlatform as Platform,
+  });
+  if (!available.some((c) => c.platform === input.channel)) {
+    return { ok: false as const, error: "This creator has no handle for that channel." };
+  }
 
   await prisma.outreachMessage.create({
     data: {
       creatorId,
-      channel: creator.platform,
+      channel: input.channel,
       body: input.body,
       status: "SENT",
       isFollowUp: input.isFollowUp,
@@ -46,9 +57,7 @@ export async function markDmSent(
     data: {
       creatorId,
       userId: user.id,
-      text: `${input.isFollowUp ? "Follow-up" : "Outreach"} DM sent on ${
-        PLATFORMS[creator.platform as Platform].label
-      }`,
+      text: `${input.isFollowUp ? "Follow-up" : "Outreach"} DM sent on ${PLATFORMS[input.channel].label}`,
     },
   });
   await advanceToSent(creatorId, creator.stage as Stage);
@@ -64,11 +73,7 @@ export async function sendOutreachEmail(
   const user = await requireUser();
   const creator = await prisma.creator.findUniqueOrThrow({ where: { id: creatorId } });
 
-  const to = outreachEmail({
-    platform: creator.platform as Platform,
-    handle: creator.handle,
-    email: creator.email,
-  });
+  const to = creator.email?.trim();
   if (!to) return { ok: false as const, error: "This creator has no email address on file." };
   if (!input.subject.trim()) return { ok: false as const, error: "Subject is required." };
   if (!input.body.trim()) return { ok: false as const, error: "Message body is empty." };
