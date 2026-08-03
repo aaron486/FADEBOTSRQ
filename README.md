@@ -7,6 +7,7 @@ An internal dashboard for managing creator partnerships end to end:
 ## Features
 
 - **Creators by IG handle, X handle, or email** — plus followers, niche, notes
+- **Auto profile lookup** — with `ANTHROPIC_API_KEY` set, type a creator's name (e.g. "Lil Baby") and **🔍 Find profiles** web-searches their official Instagram/X handles, approximate follower counts, niche, and public contact email, then prefills the form (Claude web-search tool)
 - **Pipeline** — To contact → Outreach sent → Responded → Confirmed → Contracted → Posted (+ Declined), shown as a sortable/filterable **table** or a drag-and-drop **kanban board**
 - **Outreach crafting** — pick a scenario (first contact, follow-up, rate discussion, contract, post-live thanks, re-engage…), get a personalized draft, and shuffle between handcrafted variants. With `ANTHROPIC_API_KEY` set, Claude generates and **reimagines** drafts in your chosen tone (casual / professional / hype / short), personalized to the creator's niche and history. Any draft can be saved as a reusable template.
 - **Outreach composer** — reusable templates with `{name}` / `{handle}` / `{platform}` variables:
