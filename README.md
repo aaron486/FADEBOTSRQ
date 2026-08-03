@@ -8,6 +8,7 @@ An internal dashboard for managing creator partnerships end to end:
 
 - **Creators by IG handle, X handle, or email** — plus followers, niche, notes
 - **Pipeline** — To contact → Outreach sent → Responded → Confirmed → Contracted → Posted (+ Declined), shown as a sortable/filterable **table** or a drag-and-drop **kanban board**
+- **Outreach crafting** — pick a scenario (first contact, follow-up, rate discussion, contract, post-live thanks, re-engage…), get a personalized draft, and shuffle between handcrafted variants. With `ANTHROPIC_API_KEY` set, Claude generates and **reimagines** drafts in your chosen tone (casual / professional / hype / short), personalized to the creator's niche and history. Any draft can be saved as a reusable template.
 - **Outreach composer** — reusable templates with `{name}` / `{handle}` / `{platform}` variables:
   - **Instagram / X**: generates the DM, copy-to-clipboard, deep link to their DMs, "Mark as sent" logging (IG/X don't allow sending DMs via API)
   - **Email**: actually sends through [Resend](https://resend.com) from your domain and logs the message

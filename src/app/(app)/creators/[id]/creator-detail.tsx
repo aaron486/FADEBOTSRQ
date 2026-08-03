@@ -89,12 +89,14 @@ export function CreatorDetail({
   messages,
   activities,
   templates,
+  aiEnabled,
 }: {
   creator: CreatorDetailData;
   posts: PostItem[];
   messages: MessageItem[];
   activities: ActivityItem[];
   templates: TemplateItem[];
+  aiEnabled: boolean;
 }) {
   const s = stageMeta(creator.stage);
   const [, startTransition] = useTransition();
@@ -137,7 +139,12 @@ export function CreatorDetail({
         </div>
         <div className="space-y-4">
           <Section title={`Outreach — ${PLATFORMS[creator.platform].isEmail ? "email" : "DM"}`}>
-            <Composer creator={creator} templates={templates} hasSentBefore={messages.some((m) => m.status === "SENT")} />
+            <Composer
+              creator={creator}
+              templates={templates}
+              hasSentBefore={messages.some((m) => m.status === "SENT")}
+              aiEnabled={aiEnabled}
+            />
           </Section>
           <MessagesSection messages={messages} />
           <ActivitySection creator={creator} activities={activities} />

@@ -11,6 +11,7 @@ export async function GET() {
     authSecretSet: !!process.env.AUTH_SECRET,
     seedAdminEmailSet: !!process.env.SEED_ADMIN_EMAIL,
     resendConfigured: !!process.env.RESEND_API_KEY,
+    aiConfigured: !!process.env.ANTHROPIC_API_KEY,
     databaseUrlSet: !!process.env.DATABASE_URL,
   };
   try {
