@@ -15,7 +15,7 @@ An internal dashboard for managing creator partnerships end to end:
 - **Post tracking** — post URLs with views/likes, editable as numbers come in
 - **KPIs** — committed spend, paid out, awaiting reply, total views, cost per 1k views
 - **Activity log** per creator — stage changes, sends, payments, and manual notes, with who did what
-- **Team access** — sign-in restricted to an allowlist you manage in Settings, via a shared team password (`APP_PASSWORD`) and/or email magic links (Resend)
+- **Team access** — open by default (no login) until `REQUIRE_LOGIN=true` is set; then sign-in is restricted to an allowlist you manage in Settings, via a shared team password (`APP_PASSWORD`) and/or email magic links (Resend)
 - Light/dark theme
 
 ## Stack

@@ -62,9 +62,20 @@ if (process.env.APP_PASSWORD) {
       },
       async authorize(credentials) {
         const email = String(credentials?.email ?? "").toLowerCase().trim();
-        const password = String(credentials?.password ?? "");
-        if (!email || !password || !safeEqual(password, process.env.APP_PASSWORD!)) return null;
-        if (!(await isAllowed(email))) return null;
+        // Trim both sides: pasted env values and mobile keyboards add stray
+        // whitespace, and this is a shared team password, not a user secret.
+        const password = String(credentials?.password ?? "").trim();
+        const expected = process.env.APP_PASSWORD!.trim();
+        if (!email || !password) return null;
+        if (!safeEqual(password, expected)) {
+          console.log(`[auth] team-password rejected for ${email}: password mismatch`);
+          return null;
+        }
+        if (!(await isAllowed(email))) {
+          console.log(`[auth] team-password rejected for ${email}: not on allowlist (SEED_ADMIN_EMAIL ${process.env.SEED_ADMIN_EMAIL ? "set" : "NOT set"})`);
+          return null;
+        }
+        console.log(`[auth] team-password sign-in ok for ${email}`);
         return prisma.user.upsert({
           where: { email },
           update: {},
@@ -114,11 +125,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 });
 
-/** For server actions: returns the signed-in user's {id, email} or throws. */
+/**
+ * Login is optional until REQUIRE_LOGIN=true is set — the app runs in open
+ * mode so the team can use it before auth (email/Resend) is configured.
+ */
+export const loginRequired = process.env.REQUIRE_LOGIN === "true";
+
+/**
+ * For server actions: returns the signed-in user's {id, email}. In open mode
+ * (no session, login not required) actions are attributed to a shared team
+ * user so activity logging keeps working.
+ */
 export async function requireUser() {
   const session = await auth();
   const id = session?.user?.id;
   const email = session?.user?.email;
-  if (!id || !email) throw new Error("Not authenticated");
-  return { id, email };
+  if (id && email) return { id, email };
+  if (!loginRequired) {
+    const user = await prisma.user.upsert({
+      where: { email: "team@fade.bet" },
+      update: {},
+      create: { email: "team@fade.bet", name: "FADE Team" },
+    });
+    return { id: user.id, email: user.email };
+  }
+  throw new Error("Not authenticated");
 }
