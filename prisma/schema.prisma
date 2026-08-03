@@ -69,6 +69,7 @@ model AllowedEmail {
 enum Platform {
   INSTAGRAM
   X
+  TIKTOK
   EMAIL
 }
 
@@ -96,15 +97,25 @@ enum MessageStatus {
 }
 
 model Creator {
-  id        String   @id @default(cuid())
-  name      String
-  platform  Platform
-  handle    String
-  email     String?
+  id   String @id @default(cuid())
+  name String
+
+  // Contact channels — a creator can have any/all of these at once.
+  instagramHandle String?
+  xHandle         String?
+  tiktokHandle    String?
+  email           String?
+  phone           String?
+  // Which channel outreach defaults to.
+  primaryPlatform Platform @default(INSTAGRAM)
+
+  agencyName    String?
+  agencyContact String?
+
   followers Int?
   niche     String?
   notes     String?
-  stage     Stage    @default(TO_CONTACT)
+  stage     Stage   @default(TO_CONTACT)
 
   agreedCostCents  Int?
   paidCents        Int?
@@ -125,7 +136,7 @@ model Creator {
   updatedAt DateTime @updatedAt
 
   @@index([stage])
-  @@index([platform])
+  @@index([primaryPlatform])
 }
 
 model Template {

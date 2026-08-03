@@ -19,9 +19,13 @@ import { KanbanBoard } from "@/components/kanban";
 export type CreatorRow = {
   id: string;
   name: string;
-  platform: Platform;
-  handle: string;
+  instagramHandle: string | null;
+  xHandle: string | null;
+  tiktokHandle: string | null;
   email: string | null;
+  phone: string | null;
+  primaryPlatform: Platform;
+  agencyName: string | null;
   followers: number | null;
   niche: string | null;
   notes: string | null;
@@ -83,12 +87,20 @@ export function DashboardView({ rows: serverRows }: { rows: CreatorRow[] }) {
     const query = q.trim().toLowerCase();
     if (query) {
       list = list.filter((c) =>
-        [c.name, c.handle, c.email, c.niche, c.notes].some((v) =>
-          (v ?? "").toLowerCase().includes(query)
+        [c.name, c.instagramHandle, c.xHandle, c.tiktokHandle, c.email, c.phone, c.agencyName, c.niche, c.notes].some(
+          (v) => (v ?? "").toLowerCase().includes(query)
         )
       );
     }
-    if (platform) list = list.filter((c) => c.platform === platform);
+    if (platform) {
+      const key = {
+        INSTAGRAM: "instagramHandle",
+        X: "xHandle",
+        TIKTOK: "tiktokHandle",
+        EMAIL: "email",
+      }[platform] as keyof CreatorRow;
+      list = list.filter((c) => !!c[key]);
+    }
     if (stageFilter) list = list.filter((c) => c.stage === stageFilter);
 
     const sorters: Record<SortKey, (a: CreatorRow, b: CreatorRow) => number> = {

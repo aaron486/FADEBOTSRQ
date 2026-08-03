@@ -17,7 +17,7 @@ import {
   Stage,
   STAGES,
   PLATFORMS,
-  contactLabel,
+  primaryChannel,
   fmtMoneyCents,
   fmtNum,
 } from "@/lib/creator-meta";
@@ -121,7 +121,10 @@ function Card({ row, overlay = false }: { row: CreatorRow; overlay?: boolean }) 
     >
       <div className="font-semibold leading-tight">{row.name}</div>
       <div className="text-xs text-ink-3 mt-0.5">
-        {PLATFORMS[row.platform].label} · {contactLabel(row)}
+        {(() => {
+          const primary = primaryChannel(row);
+          return primary ? `${PLATFORMS[primary.platform].label} · ${primary.handle}` : "no contact on file";
+        })()}
       </div>
       <div className="flex items-center justify-between mt-1.5 text-xs text-ink-2">
         <span>{row.followers != null ? `${fmtNum(row.followers)} fol.` : ""}</span>

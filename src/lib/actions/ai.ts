@@ -3,13 +3,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/auth";
-import { PLATFORMS, Platform, contactLabel, stageMeta, Stage } from "@/lib/creator-meta";
+import { PLATFORMS, Platform, channels, stageMeta, Stage } from "@/lib/creator-meta";
 import { scenarioByKey, TONES, ToneKey } from "@/lib/scenarios";
 
 const MODEL = "claude-opus-5";
 
 export type CraftInput = {
-  channel: "dm" | "email";
+  channel: Platform;
   scenario: string;
   tone: ToneKey;
   instructions?: string;
@@ -49,14 +49,22 @@ export async function craftOutreach(creatorId: string, input: CraftInput): Promi
 
   const scenario = scenarioByKey(input.scenario);
   const tone = TONES.find((t) => t.key === input.tone);
-  const isEmail = input.channel === "email";
+  const isEmail = input.channel === "EMAIL";
+
+  const allChannels = channels({
+    instagramHandle: creator.instagramHandle,
+    xHandle: creator.xHandle,
+    tiktokHandle: creator.tiktokHandle,
+    email: creator.email,
+    phone: creator.phone,
+    primaryPlatform: creator.primaryPlatform as Platform,
+  });
 
   const creatorContext = [
     `Name: ${creator.name}`,
-    `Platform: ${PLATFORMS[creator.platform as Platform].label} (${contactLabel({
-      platform: creator.platform as Platform,
-      handle: creator.handle,
-    })})`,
+    `Channels: ${allChannels.map((c) => `${PLATFORMS[c.platform].label} ${c.handle}`).join(", ") || "none on file"}`,
+    `This message goes out via: ${PLATFORMS[input.channel].label}`,
+    creator.agencyName ? `Represented by agency: ${creator.agencyName}` : null,
     creator.followers != null ? `Followers: ${creator.followers.toLocaleString("en-US")}` : null,
     creator.niche ? `Niche: ${creator.niche}` : null,
     `Pipeline stage: ${stageMeta(creator.stage as Stage).label}`,

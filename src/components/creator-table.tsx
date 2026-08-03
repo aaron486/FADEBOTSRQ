@@ -6,7 +6,8 @@ import {
   STAGES,
   stageMeta,
   PLATFORMS,
-  contactLabel,
+  channels,
+  primaryChannel,
   profileUrl,
   fmtMoneyCents,
   fmtNum,
@@ -61,17 +62,45 @@ export function CreatorTable({
                   </div>
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap" style={{ borderBottom: "1px solid var(--grid)" }}>
-                  <span className="chip mr-1.5">{PLATFORMS[c.platform].label}</span>
-                  <a
-                    href={profileUrl(c)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline"
-                    style={{ color: "var(--accent)" }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {contactLabel(c)}
-                  </a>
+                  {(() => {
+                    const primary = primaryChannel(c);
+                    const others = channels(c).filter((ch) => ch.platform !== primary?.platform);
+                    return (
+                      <span className="inline-flex items-center gap-1.5">
+                        {primary ? (
+                          <>
+                            <span className="chip">{PLATFORMS[primary.platform].label}</span>
+                            <a
+                              href={profileUrl(primary.platform, primary.handle)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                              style={{ color: "var(--accent)" }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {primary.handle}
+                            </a>
+                          </>
+                        ) : (
+                          <span className="text-ink-3">—</span>
+                        )}
+                        {others.map((ch) => (
+                          <a
+                            key={ch.platform}
+                            href={profileUrl(ch.platform, ch.handle)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="chip hover:underline"
+                            title={`${PLATFORMS[ch.platform].label}: ${ch.handle}`}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {PLATFORMS[ch.platform].short}
+                          </a>
+                        ))}
+                        {c.phone && <span className="chip" title={`Phone: ${c.phone}`}>☎</span>}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--grid)" }} onClick={(e) => e.stopPropagation()}>
                   <span className="inline-flex items-center gap-1.5">

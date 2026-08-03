@@ -20,29 +20,64 @@ function revalidateCreator(id: string) {
 
 export type CreatorInput = {
   name: string;
-  platform: Platform;
-  handle: string;
+  instagramHandle?: string | null;
+  xHandle?: string | null;
+  tiktokHandle?: string | null;
   email?: string | null;
+  phone?: string | null;
+  primaryPlatform: Platform;
+  agencyName?: string | null;
+  agencyContact?: string | null;
   followers?: number | null;
   niche?: string | null;
   notes?: string | null;
 };
 
+function contactData(input: CreatorInput) {
+  const clean = (v?: string | null) => v?.trim() || null;
+  return {
+    instagramHandle: clean(input.instagramHandle),
+    xHandle: clean(input.xHandle),
+    tiktokHandle: clean(input.tiktokHandle),
+    email: clean(input.email),
+    phone: clean(input.phone),
+    agencyName: clean(input.agencyName),
+    agencyContact: clean(input.agencyContact),
+    followers: input.followers ?? null,
+    niche: clean(input.niche),
+    notes: input.notes?.trim() || null,
+  };
+}
+
+/** Ensure primaryPlatform points at a channel that actually exists. */
+function resolvePrimary(input: CreatorInput): Platform | null {
+  const has: Record<Platform, boolean> = {
+    INSTAGRAM: !!input.instagramHandle?.trim(),
+    X: !!input.xHandle?.trim(),
+    TIKTOK: !!input.tiktokHandle?.trim(),
+    EMAIL: !!input.email?.trim(),
+  };
+  if (has[input.primaryPlatform]) return input.primaryPlatform;
+  const first = (Object.keys(has) as Platform[]).find((p) => has[p]);
+  return first ?? null;
+}
+
 export async function createCreator(input: CreatorInput) {
   const user = await requireUser();
-  const handle = input.handle.trim();
-  const name = input.name.trim() || handle.replace(/^@/, "");
-  if (!handle) return { ok: false as const, error: "Handle or email is required" };
+  const primary = resolvePrimary(input);
+  if (!primary) {
+    return { ok: false as const, error: "Add at least one contact channel (IG, X, TikTok, or email)." };
+  }
+  const data = contactData(input);
+  const name =
+    input.name.trim() ||
+    (data.instagramHandle ?? data.xHandle ?? data.tiktokHandle ?? data.email ?? "").replace(/^@/, "");
 
   const creator = await prisma.creator.create({
     data: {
       name,
-      platform: input.platform,
-      handle,
-      email: input.email?.trim() || null,
-      followers: input.followers ?? null,
-      niche: input.niche?.trim() || null,
-      notes: input.notes?.trim() || null,
+      ...data,
+      primaryPlatform: primary,
       ownerId: user.id,
       activities: { create: { text: "Creator added", userId: user.id } },
     },
@@ -53,16 +88,16 @@ export async function createCreator(input: CreatorInput) {
 
 export async function updateCreatorProfile(id: string, input: CreatorInput) {
   await requireUser();
+  const primary = resolvePrimary(input);
+  if (!primary) {
+    return { ok: false as const, error: "Keep at least one contact channel (IG, X, TikTok, or email)." };
+  }
   await prisma.creator.update({
     where: { id },
     data: {
       name: input.name.trim(),
-      platform: input.platform,
-      handle: input.handle.trim(),
-      email: input.email?.trim() || null,
-      followers: input.followers ?? null,
-      niche: input.niche?.trim() || null,
-      notes: input.notes?.trim() || null,
+      ...contactData(input),
+      primaryPlatform: primary,
     },
   });
   revalidateCreator(id);

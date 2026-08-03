@@ -18,6 +18,7 @@ export type LookupResult =
       name: string;
       instagram: ProfileHit | null;
       x: ProfileHit | null;
+      tiktok: ProfileHit | null;
       email: string | null;
       niche: string | null;
       note: string | null;
@@ -47,6 +48,7 @@ After searching, respond with ONLY a JSON object (no prose, no markdown fences) 
   "name": "properly capitalized display name",
   "instagram": {"handle": "@handle", "followers": 21000000, "url": "https://instagram.com/..."} | null,
   "x": {"handle": "@handle", "followers": 3400000, "url": "https://x.com/..."} | null,
+  "tiktok": {"handle": "@handle", "followers": 9000000, "url": "https://www.tiktok.com/@..."} | null,
   "email": "publicly listed booking/business email" | null,
   "niche": "short description of their content niche" | null,
   "note": "one short caveat if anything is uncertain, else null"
@@ -112,6 +114,7 @@ Follower counts are integers (approximate is fine — round from '21.4M' style f
       name?: string;
       instagram?: { handle?: string; followers?: number | null; url?: string | null } | null;
       x?: { handle?: string; followers?: number | null; url?: string | null } | null;
+      tiktok?: { handle?: string; followers?: number | null; url?: string | null } | null;
       email?: string | null;
       niche?: string | null;
       note?: string | null;
@@ -126,10 +129,13 @@ Follower counts are integers (approximate is fine — round from '21.4M' style f
         : null;
     return {
       ok: true,
-      found: parsed.found !== false && !!(parsed.instagram?.handle || parsed.x?.handle),
+      found:
+        parsed.found !== false &&
+        !!(parsed.instagram?.handle || parsed.x?.handle || parsed.tiktok?.handle),
       name: parsed.name?.trim() || name,
       instagram: clean(parsed.instagram),
       x: clean(parsed.x),
+      tiktok: clean(parsed.tiktok),
       email: parsed.email?.trim() || null,
       niche: parsed.niche?.trim() || null,
       note: parsed.note?.trim() || null,
