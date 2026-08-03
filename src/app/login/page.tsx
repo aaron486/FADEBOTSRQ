@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { auth, loginRequired } from "@/auth";
 import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
+  if (!loginRequired) redirect("/");
   const session = await auth();
   if (session?.user) redirect("/");
 
