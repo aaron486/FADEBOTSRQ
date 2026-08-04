@@ -9,12 +9,14 @@ import {
   STAGES,
   stageIndex,
   PLATFORMS,
+  totalFollowers,
   fmtMoneyCents,
   fmtNum,
 } from "@/lib/creator-meta";
 import { setStage } from "@/lib/actions/creators";
 import { CreatorTable } from "@/components/creator-table";
 import { KanbanBoard } from "@/components/kanban";
+import { FollowersTable } from "@/components/followers-table";
 
 export type CreatorRow = {
   id: string;
@@ -26,7 +28,9 @@ export type CreatorRow = {
   phone: string | null;
   primaryPlatform: Platform;
   agencyName: string | null;
-  followers: number | null;
+  instagramFollowers: number | null;
+  xFollowers: number | null;
+  tiktokFollowers: number | null;
   niche: string | null;
   notes: string | null;
   stage: Stage;
@@ -40,8 +44,17 @@ export type CreatorRow = {
   updatedAt: string;
 };
 
-type SortKey = "updated" | "created" | "name" | "followers" | "cost" | "stage";
-type ViewMode = "table" | "board";
+type SortKey =
+  | "updated"
+  | "created"
+  | "name"
+  | "followers"
+  | "followers_ig"
+  | "followers_tt"
+  | "followers_x"
+  | "cost"
+  | "stage";
+type ViewMode = "table" | "board" | "followers";
 
 // View preference lives in localStorage, exposed as an external store so it
 // survives reloads without hydration mismatches.
@@ -52,7 +65,8 @@ function subscribeView(cb: () => void) {
 }
 function readView(): ViewMode {
   try {
-    return localStorage.getItem("fade-view") === "board" ? "board" : "table";
+    const v = localStorage.getItem("fade-view");
+    return v === "board" || v === "followers" ? v : "table";
   } catch {
     return "table";
   }
@@ -107,7 +121,10 @@ export function DashboardView({ rows: serverRows }: { rows: CreatorRow[] }) {
       updated: (a, b) => b.updatedAt.localeCompare(a.updatedAt),
       created: (a, b) => b.createdAt.localeCompare(a.createdAt),
       name: (a, b) => a.name.localeCompare(b.name),
-      followers: (a, b) => (b.followers ?? 0) - (a.followers ?? 0),
+      followers: (a, b) => totalFollowers(b) - totalFollowers(a),
+      followers_ig: (a, b) => (b.instagramFollowers ?? 0) - (a.instagramFollowers ?? 0),
+      followers_tt: (a, b) => (b.tiktokFollowers ?? 0) - (a.tiktokFollowers ?? 0),
+      followers_x: (a, b) => (b.xFollowers ?? 0) - (a.xFollowers ?? 0),
       cost: (a, b) => (b.agreedCostCents ?? 0) - (a.agreedCostCents ?? 0),
       stage: (a, b) => stageIndex(a.stage) - stageIndex(b.stage),
     };
@@ -206,13 +223,16 @@ export function DashboardView({ rows: serverRows }: { rows: CreatorRow[] }) {
             <option value="updated">Recently updated</option>
             <option value="created">Recently added</option>
             <option value="name">Name A–Z</option>
-            <option value="followers">Followers</option>
+            <option value="followers">Total followers</option>
+            <option value="followers_ig">IG followers</option>
+            <option value="followers_tt">TikTok followers</option>
+            <option value="followers_x">X followers</option>
             <option value="cost">Agreed cost</option>
             <option value="stage">Pipeline stage</option>
           </select>
         )}
         <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--edge)" }}>
-          {(["table", "board"] as const).map((v) => (
+          {(["table", "board", "followers"] as const).map((v) => (
             <button
               key={v}
               onClick={() => switchView(v)}
@@ -223,7 +243,7 @@ export function DashboardView({ rows: serverRows }: { rows: CreatorRow[] }) {
                   : { background: "var(--surface-1)", color: "var(--text-secondary)" }
               }
             >
-              {v === "table" ? "Table" : "Board"}
+              {v === "table" ? "Table" : v === "board" ? "Board" : "Followers"}
             </button>
           ))}
         </div>
@@ -244,8 +264,10 @@ export function DashboardView({ rows: serverRows }: { rows: CreatorRow[] }) {
         </div>
       ) : view === "table" ? (
         <CreatorTable rows={filtered} onStageChange={moveStage} />
-      ) : (
+      ) : view === "board" ? (
         <KanbanBoard rows={filtered} onStageChange={moveStage} />
+      ) : (
+        <FollowersTable rows={filtered} />
       )}
     </div>
   );

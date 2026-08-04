@@ -18,6 +18,7 @@ import {
   STAGES,
   PLATFORMS,
   primaryChannel,
+  totalFollowers,
   fmtMoneyCents,
   fmtNum,
 } from "@/lib/creator-meta";
@@ -127,7 +128,7 @@ function Card({ row, overlay = false }: { row: CreatorRow; overlay?: boolean }) 
         })()}
       </div>
       <div className="flex items-center justify-between mt-1.5 text-xs text-ink-2">
-        <span>{row.followers != null ? `${fmtNum(row.followers)} fol.` : ""}</span>
+        <span>{totalFollowers(row) > 0 ? `${fmtNum(totalFollowers(row))} fol.` : ""}</span>
         <span className="tabular-nums">
           {row.agreedCostCents != null ? fmtMoneyCents(row.agreedCostCents) : ""}
         </span>

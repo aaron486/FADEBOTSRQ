@@ -112,7 +112,10 @@ model Creator {
   agencyName    String?
   agencyContact String?
 
-  followers Int?
+  instagramFollowers Int?
+  xFollowers         Int?
+  tiktokFollowers    Int?
+
   niche     String?
   notes     String?
   stage     Stage   @default(TO_CONTACT)

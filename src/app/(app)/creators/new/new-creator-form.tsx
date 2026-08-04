@@ -19,7 +19,9 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
   const [agencyName, setAgencyName] = useState("");
   const [agencyContact, setAgencyContact] = useState("");
   const [primary, setPrimary] = useState<Platform | "">("");
-  const [followers, setFollowers] = useState("");
+  const [igFollowers, setIgFollowers] = useState("");
+  const [xFollowers, setXFollowers] = useState("");
+  const [ttFollowers, setTtFollowers] = useState("");
   const [niche, setNiche] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
@@ -45,17 +47,17 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
     if (res.tiktok) setTiktok(res.tiktok.handle);
     if (res.email) setEmail(res.email);
     if (res.niche) setNiche(res.niche);
-    // Primary = biggest audience; followers field takes that count.
+    if (res.instagram?.followers != null) setIgFollowers(String(res.instagram.followers));
+    if (res.x?.followers != null) setXFollowers(String(res.x.followers));
+    if (res.tiktok?.followers != null) setTtFollowers(String(res.tiktok.followers));
+    // Primary = biggest audience.
     const hits = [
-      { key: "INSTAGRAM" as Platform, f: res.instagram?.followers ?? -1 },
-      { key: "X" as Platform, f: res.x?.followers ?? -1 },
-      { key: "TIKTOK" as Platform, f: res.tiktok?.followers ?? -1 },
-    ].filter((h) => h.f >= 0 || (h.key === "INSTAGRAM" && res.instagram) || (h.key === "X" && res.x) || (h.key === "TIKTOK" && res.tiktok));
+      { key: "INSTAGRAM" as Platform, f: res.instagram ? (res.instagram.followers ?? 0) : -1 },
+      { key: "X" as Platform, f: res.x ? (res.x.followers ?? 0) : -1 },
+      { key: "TIKTOK" as Platform, f: res.tiktok ? (res.tiktok.followers ?? 0) : -1 },
+    ].filter((h) => h.f >= 0);
     hits.sort((a, b) => b.f - a.f);
-    if (hits[0]) {
-      setPrimary(hits[0].key);
-      if (hits[0].f > 0) setFollowers(String(hits[0].f));
-    }
+    if (hits[0]) setPrimary(hits[0].key);
     const counts = [
       res.instagram?.followers != null ? `IG ~${fmtNum(res.instagram.followers)}` : null,
       res.x?.followers != null ? `X ~${fmtNum(res.x.followers)}` : null,
@@ -104,7 +106,9 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
         primaryPlatform: effectivePrimary,
         agencyName: agencyName || null,
         agencyContact: agencyContact || null,
-        followers: followers === "" ? null : Number(followers),
+        instagramFollowers: igFollowers === "" ? null : Number(igFollowers),
+        xFollowers: xFollowers === "" ? null : Number(xFollowers),
+        tiktokFollowers: ttFollowers === "" ? null : Number(ttFollowers),
         niche: niche || null,
         notes: notes || null,
       });
@@ -159,16 +163,25 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
         <div className="field-label">Contact channels — add any or all</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="field-label" htmlFor="instagram">Instagram</label>
-            <input id="instagram" className="input" placeholder="@handle" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
+            <label className="field-label" htmlFor="instagram">Instagram · followers</label>
+            <div className="flex gap-2">
+              <input id="instagram" className="input flex-1" placeholder="@handle" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
+              <input className="input w-28" type="number" min={0} placeholder="followers" value={igFollowers} onChange={(e) => setIgFollowers(e.target.value)} />
+            </div>
           </div>
           <div>
-            <label className="field-label" htmlFor="x">X</label>
-            <input id="x" className="input" placeholder="@handle" value={x} onChange={(e) => setX(e.target.value)} />
+            <label className="field-label" htmlFor="x">X · followers</label>
+            <div className="flex gap-2">
+              <input id="x" className="input flex-1" placeholder="@handle" value={x} onChange={(e) => setX(e.target.value)} />
+              <input className="input w-28" type="number" min={0} placeholder="followers" value={xFollowers} onChange={(e) => setXFollowers(e.target.value)} />
+            </div>
           </div>
           <div>
-            <label className="field-label" htmlFor="tiktok">TikTok</label>
-            <input id="tiktok" className="input" placeholder="@handle" value={tiktok} onChange={(e) => setTiktok(e.target.value)} />
+            <label className="field-label" htmlFor="tiktok">TikTok · followers</label>
+            <div className="flex gap-2">
+              <input id="tiktok" className="input flex-1" placeholder="@handle" value={tiktok} onChange={(e) => setTiktok(e.target.value)} />
+              <input className="input w-28" type="number" min={0} placeholder="followers" value={ttFollowers} onChange={(e) => setTtFollowers(e.target.value)} />
+            </div>
           </div>
           <div>
             <label className="field-label" htmlFor="email">Email</label>
@@ -208,11 +221,7 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="field-label" htmlFor="followers">Followers (primary channel)</label>
-          <input id="followers" className="input" type="number" min={0} placeholder="e.g. 45000" value={followers} onChange={(e) => setFollowers(e.target.value)} />
-        </div>
-        <div>
+        <div className="sm:col-span-2">
           <label className="field-label" htmlFor="niche">Niche</label>
           <input id="niche" className="input" placeholder="e.g. sports betting, comedy" value={niche} onChange={(e) => setNiche(e.target.value)} />
         </div>

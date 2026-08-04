@@ -21,6 +21,19 @@ export type CraftResult =
   | { ok: true; subject: string; body: string }
   | { ok: false; error: string };
 
+function followerSummary(c: {
+  instagramFollowers: number | null;
+  xFollowers: number | null;
+  tiktokFollowers: number | null;
+}): string | null {
+  const parts = [
+    c.instagramFollowers != null ? `IG ~${c.instagramFollowers.toLocaleString("en-US")}` : null,
+    c.xFollowers != null ? `X ~${c.xFollowers.toLocaleString("en-US")}` : null,
+    c.tiktokFollowers != null ? `TikTok ~${c.tiktokFollowers.toLocaleString("en-US")}` : null,
+  ].filter(Boolean);
+  return parts.length ? `Followers: ${parts.join(", ")}` : null;
+}
+
 const OUTPUT_SCHEMA = {
   type: "object" as const,
   properties: {
@@ -65,7 +78,7 @@ export async function craftOutreach(creatorId: string, input: CraftInput): Promi
     `Channels: ${allChannels.map((c) => `${PLATFORMS[c.platform].label} ${c.handle}`).join(", ") || "none on file"}`,
     `This message goes out via: ${PLATFORMS[input.channel].label}`,
     creator.agencyName ? `Represented by agency: ${creator.agencyName}` : null,
-    creator.followers != null ? `Followers: ${creator.followers.toLocaleString("en-US")}` : null,
+    followerSummary(creator),
     creator.niche ? `Niche: ${creator.niche}` : null,
     `Pipeline stage: ${stageMeta(creator.stage as Stage).label}`,
     creator.notes ? `Internal notes: ${creator.notes}` : null,
