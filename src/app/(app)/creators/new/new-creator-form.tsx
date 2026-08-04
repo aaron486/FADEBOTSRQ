@@ -14,6 +14,7 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
   const [instagram, setInstagram] = useState("");
   const [x, setX] = useState("");
   const [tiktok, setTiktok] = useState("");
+  const [youtube, setYoutube] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [agencyName, setAgencyName] = useState("");
@@ -22,6 +23,7 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
   const [igFollowers, setIgFollowers] = useState("");
   const [xFollowers, setXFollowers] = useState("");
   const [ttFollowers, setTtFollowers] = useState("");
+  const [ytFollowers, setYtFollowers] = useState("");
   const [niche, setNiche] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
@@ -34,6 +36,7 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
     { key: "INSTAGRAM", label: "Instagram", has: !!instagram.trim() },
     { key: "X", label: "X", has: !!x.trim() },
     { key: "TIKTOK", label: "TikTok", has: !!tiktok.trim() },
+    { key: "YOUTUBE", label: "YouTube", has: !!youtube.trim() },
     { key: "EMAIL", label: "Email", has: !!email.trim() },
   ];
   const available = channelOptions.filter((c) => c.has);
@@ -45,16 +48,19 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
     if (res.instagram) setInstagram(res.instagram.handle);
     if (res.x) setX(res.x.handle);
     if (res.tiktok) setTiktok(res.tiktok.handle);
+    if (res.youtube) setYoutube(res.youtube.handle);
     if (res.email) setEmail(res.email);
     if (res.niche) setNiche(res.niche);
     if (res.instagram?.followers != null) setIgFollowers(String(res.instagram.followers));
     if (res.x?.followers != null) setXFollowers(String(res.x.followers));
     if (res.tiktok?.followers != null) setTtFollowers(String(res.tiktok.followers));
+    if (res.youtube?.followers != null) setYtFollowers(String(res.youtube.followers));
     // Primary = biggest audience.
     const hits = [
       { key: "INSTAGRAM" as Platform, f: res.instagram ? (res.instagram.followers ?? 0) : -1 },
       { key: "X" as Platform, f: res.x ? (res.x.followers ?? 0) : -1 },
       { key: "TIKTOK" as Platform, f: res.tiktok ? (res.tiktok.followers ?? 0) : -1 },
+      { key: "YOUTUBE" as Platform, f: res.youtube ? (res.youtube.followers ?? 0) : -1 },
     ].filter((h) => h.f >= 0);
     hits.sort((a, b) => b.f - a.f);
     if (hits[0]) setPrimary(hits[0].key);
@@ -62,6 +68,7 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
       res.instagram?.followers != null ? `IG ~${fmtNum(res.instagram.followers)}` : null,
       res.x?.followers != null ? `X ~${fmtNum(res.x.followers)}` : null,
       res.tiktok?.followers != null ? `TikTok ~${fmtNum(res.tiktok.followers)}` : null,
+      res.youtube?.followers != null ? `YouTube ~${fmtNum(res.youtube.followers)} subs` : null,
     ].filter(Boolean);
     setLookupNote(
       [counts.length ? `Found: ${counts.join(" · ")} (approximate)` : "Profiles found.", res.note]
@@ -101,6 +108,7 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
         instagramHandle: instagram || null,
         xHandle: x || null,
         tiktokHandle: tiktok || null,
+        youtubeHandle: youtube || null,
         email: email || null,
         phone: phone || null,
         primaryPlatform: effectivePrimary,
@@ -109,6 +117,7 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
         instagramFollowers: igFollowers === "" ? null : Number(igFollowers),
         xFollowers: xFollowers === "" ? null : Number(xFollowers),
         tiktokFollowers: ttFollowers === "" ? null : Number(ttFollowers),
+        youtubeFollowers: ytFollowers === "" ? null : Number(ytFollowers),
         niche: niche || null,
         notes: notes || null,
       });
@@ -143,7 +152,7 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
         </div>
         {aiEnabled && !searching && !lookupNote && (
           <p className="text-[11px] text-ink-3 mt-1">
-            Searches the web for their official Instagram, X, and TikTok handles, follower counts, niche, and public contact email.
+            Searches the web for their official Instagram, X, TikTok, and YouTube handles, follower counts, niche, and public contact email.
           </p>
         )}
         {searching && (
@@ -181,6 +190,13 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
             <div className="flex gap-2">
               <input id="tiktok" className="input flex-1" placeholder="@handle" value={tiktok} onChange={(e) => setTiktok(e.target.value)} />
               <input className="input w-28" type="number" min={0} placeholder="followers" value={ttFollowers} onChange={(e) => setTtFollowers(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="field-label" htmlFor="youtube">YouTube · subscribers</label>
+            <div className="flex gap-2">
+              <input id="youtube" className="input flex-1" placeholder="@channel" value={youtube} onChange={(e) => setYoutube(e.target.value)} />
+              <input className="input w-28" type="number" min={0} placeholder="subs" value={ytFollowers} onChange={(e) => setYtFollowers(e.target.value)} />
             </div>
           </div>
           <div>

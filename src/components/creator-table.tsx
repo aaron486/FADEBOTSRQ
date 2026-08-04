@@ -12,6 +12,7 @@ import {
   profileUrl,
   fmtMoneyCents,
   fmtNum,
+  fmtCompact,
   fmtDate,
 } from "@/lib/creator-meta";
 import type { CreatorRow } from "@/components/dashboard-view";
@@ -27,22 +28,33 @@ export function CreatorTable({
 
   return (
     <div className="card overflow-x-auto">
-      <table className="w-full min-w-[920px] border-collapse text-sm">
+      <table className="w-full min-w-[1150px] border-collapse text-sm">
         <thead>
           <tr className="text-left text-xs text-ink-3">
-            {["Creator", "Contact", "Stage", "Last outreach", "Agreed", "Paid", "Contract", "Posts", "Views"].map(
-              (h, i) => (
-                <th
-                  key={h}
-                  className={`px-3 py-2.5 font-semibold whitespace-nowrap ${i >= 4 && i <= 5 ? "text-right" : ""} ${
-                    i >= 7 ? "text-right" : ""
-                  }`}
-                  style={{ borderBottom: "1px solid var(--grid)" }}
-                >
-                  {h}
-                </th>
-              )
-            )}
+            {[
+              "Creator",
+              "Contact",
+              "Instagram",
+              "TikTok",
+              "YouTube",
+              "Stage",
+              "Last outreach",
+              "Agreed",
+              "Paid",
+              "Contract",
+              "Posts",
+              "Views",
+            ].map((h, i) => (
+              <th
+                key={h}
+                className={`px-3 py-2.5 font-semibold whitespace-nowrap ${
+                  (i >= 2 && i <= 4) || (i >= 7 && i <= 8) || i >= 10 ? "text-right" : ""
+                }`}
+                style={{ borderBottom: "1px solid var(--grid)" }}
+              >
+                {h}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
@@ -103,6 +115,27 @@ export function CreatorTable({
                     );
                   })()}
                 </td>
+                {([
+                  ["Instagram", c.instagramHandle, c.instagramFollowers],
+                  ["TikTok", c.tiktokHandle, c.tiktokFollowers],
+                  ["YouTube", c.youtubeHandle, c.youtubeFollowers],
+                ] as [string, string | null, number | null][]).map(([label, handle, count]) => (
+                  <td
+                    key={label}
+                    className="px-3 py-2.5 text-right tabular-nums whitespace-nowrap"
+                    style={{ borderBottom: "1px solid var(--grid)" }}
+                    title={count != null ? `${label}: ${fmtNum(count)}` : undefined}
+                  >
+                    {handle ? (
+                      <>
+                        {fmtCompact(count)}
+                        <div className="text-[11px] text-ink-3">{handle.startsWith("@") ? handle : `@${handle}`}</div>
+                      </>
+                    ) : (
+                      <span className="text-ink-3">—</span>
+                    )}
+                  </td>
+                ))}
                 <td className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--grid)" }} onClick={(e) => e.stopPropagation()}>
                   <span className="inline-flex items-center gap-1.5">
                     <span className="dot" style={{ background: s.colorVar }} />
@@ -152,7 +185,7 @@ export function CreatorTable({
           })}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={9} className="px-3 py-8 text-center text-ink-3">
+              <td colSpan={12} className="px-3 py-8 text-center text-ink-3">
                 No creators match the current filters.
               </td>
             </tr>

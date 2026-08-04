@@ -70,6 +70,7 @@ enum Platform {
   INSTAGRAM
   X
   TIKTOK
+  YOUTUBE
   EMAIL
 }
 
@@ -104,6 +105,7 @@ model Creator {
   instagramHandle String?
   xHandle         String?
   tiktokHandle    String?
+  youtubeHandle   String?
   email           String?
   phone           String?
   // Which channel outreach defaults to.
@@ -115,6 +117,7 @@ model Creator {
   instagramFollowers Int?
   xFollowers         Int?
   tiktokFollowers    Int?
+  youtubeFollowers   Int?
   followersUpdatedAt DateTime?
 
   niche     String?
@@ -153,6 +156,7 @@ model FollowerSnapshot {
   instagramFollowers Int?
   xFollowers         Int?
   tiktokFollowers    Int?
+  youtubeFollowers   Int?
   createdAt          DateTime @default(now())
 
   @@index([creatorId, createdAt])

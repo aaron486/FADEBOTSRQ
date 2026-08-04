@@ -24,6 +24,7 @@ export type CreatorRow = {
   instagramHandle: string | null;
   xHandle: string | null;
   tiktokHandle: string | null;
+  youtubeHandle: string | null;
   email: string | null;
   phone: string | null;
   primaryPlatform: Platform;
@@ -31,9 +32,11 @@ export type CreatorRow = {
   instagramFollowers: number | null;
   xFollowers: number | null;
   tiktokFollowers: number | null;
+  youtubeFollowers: number | null;
   igDelta: number | null;
   xDelta: number | null;
   ttDelta: number | null;
+  ytDelta: number | null;
   followersUpdatedAt: string | null;
   niche: string | null;
   notes: string | null;
@@ -56,6 +59,7 @@ type SortKey =
   | "followers_ig"
   | "followers_tt"
   | "followers_x"
+  | "followers_yt"
   | "cost"
   | "stage";
 type ViewMode = "table" | "board" | "followers";
@@ -111,7 +115,7 @@ export function DashboardView({
     const query = q.trim().toLowerCase();
     if (query) {
       list = list.filter((c) =>
-        [c.name, c.instagramHandle, c.xHandle, c.tiktokHandle, c.email, c.phone, c.agencyName, c.niche, c.notes].some(
+        [c.name, c.instagramHandle, c.xHandle, c.tiktokHandle, c.youtubeHandle, c.email, c.phone, c.agencyName, c.niche, c.notes].some(
           (v) => (v ?? "").toLowerCase().includes(query)
         )
       );
@@ -121,6 +125,7 @@ export function DashboardView({
         INSTAGRAM: "instagramHandle",
         X: "xHandle",
         TIKTOK: "tiktokHandle",
+        YOUTUBE: "youtubeHandle",
         EMAIL: "email",
       }[platform] as keyof CreatorRow;
       list = list.filter((c) => !!c[key]);
@@ -135,6 +140,7 @@ export function DashboardView({
       followers_ig: (a, b) => (b.instagramFollowers ?? 0) - (a.instagramFollowers ?? 0),
       followers_tt: (a, b) => (b.tiktokFollowers ?? 0) - (a.tiktokFollowers ?? 0),
       followers_x: (a, b) => (b.xFollowers ?? 0) - (a.xFollowers ?? 0),
+      followers_yt: (a, b) => (b.youtubeFollowers ?? 0) - (a.youtubeFollowers ?? 0),
       cost: (a, b) => (b.agreedCostCents ?? 0) - (a.agreedCostCents ?? 0),
       stage: (a, b) => stageIndex(a.stage) - stageIndex(b.stage),
     };
@@ -237,6 +243,7 @@ export function DashboardView({
             <option value="followers_ig">IG followers</option>
             <option value="followers_tt">TikTok followers</option>
             <option value="followers_x">X followers</option>
+            <option value="followers_yt">YouTube subscribers</option>
             <option value="cost">Agreed cost</option>
             <option value="stage">Pipeline stage</option>
           </select>

@@ -23,6 +23,7 @@ export type CreatorInput = {
   instagramHandle?: string | null;
   xHandle?: string | null;
   tiktokHandle?: string | null;
+  youtubeHandle?: string | null;
   email?: string | null;
   phone?: string | null;
   primaryPlatform: Platform;
@@ -31,6 +32,7 @@ export type CreatorInput = {
   instagramFollowers?: number | null;
   xFollowers?: number | null;
   tiktokFollowers?: number | null;
+  youtubeFollowers?: number | null;
   niche?: string | null;
   notes?: string | null;
 };
@@ -41,6 +43,7 @@ function contactData(input: CreatorInput) {
     instagramHandle: clean(input.instagramHandle),
     xHandle: clean(input.xHandle),
     tiktokHandle: clean(input.tiktokHandle),
+    youtubeHandle: clean(input.youtubeHandle),
     email: clean(input.email),
     phone: clean(input.phone),
     agencyName: clean(input.agencyName),
@@ -48,6 +51,7 @@ function contactData(input: CreatorInput) {
     instagramFollowers: input.instagramFollowers ?? null,
     xFollowers: input.xFollowers ?? null,
     tiktokFollowers: input.tiktokFollowers ?? null,
+    youtubeFollowers: input.youtubeFollowers ?? null,
     niche: clean(input.niche),
     notes: input.notes?.trim() || null,
   };
@@ -59,6 +63,7 @@ function resolvePrimary(input: CreatorInput): Platform | null {
     INSTAGRAM: !!input.instagramHandle?.trim(),
     X: !!input.xHandle?.trim(),
     TIKTOK: !!input.tiktokHandle?.trim(),
+    YOUTUBE: !!input.youtubeHandle?.trim(),
     EMAIL: !!input.email?.trim(),
   };
   if (has[input.primaryPlatform]) return input.primaryPlatform;
@@ -78,7 +83,10 @@ export async function createCreator(input: CreatorInput) {
     (data.instagramHandle ?? data.xHandle ?? data.tiktokHandle ?? data.email ?? "").replace(/^@/, "");
 
   const hasCounts =
-    data.instagramFollowers != null || data.xFollowers != null || data.tiktokFollowers != null;
+    data.instagramFollowers != null ||
+    data.xFollowers != null ||
+    data.tiktokFollowers != null ||
+    data.youtubeFollowers != null;
   const creator = await prisma.creator.create({
     data: {
       name,
@@ -95,6 +103,7 @@ export async function createCreator(input: CreatorInput) {
                 instagramFollowers: data.instagramFollowers,
                 xFollowers: data.xFollowers,
                 tiktokFollowers: data.tiktokFollowers,
+                youtubeFollowers: data.youtubeFollowers,
               },
             },
           }
@@ -116,7 +125,8 @@ export async function updateCreatorProfile(id: string, input: CreatorInput) {
   const countsChanged =
     before.instagramFollowers !== data.instagramFollowers ||
     before.xFollowers !== data.xFollowers ||
-    before.tiktokFollowers !== data.tiktokFollowers;
+    before.tiktokFollowers !== data.tiktokFollowers ||
+    before.youtubeFollowers !== data.youtubeFollowers;
   await prisma.creator.update({
     where: { id },
     data: {
@@ -131,6 +141,7 @@ export async function updateCreatorProfile(id: string, input: CreatorInput) {
                 instagramFollowers: data.instagramFollowers,
                 xFollowers: data.xFollowers,
                 tiktokFollowers: data.tiktokFollowers,
+                youtubeFollowers: data.youtubeFollowers,
               },
             },
           }

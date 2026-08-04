@@ -2,7 +2,7 @@
 // Kept free of Prisma imports so it can ship in the client bundle; the string
 // literal types match the Prisma enums exactly.
 
-export type Platform = "INSTAGRAM" | "X" | "TIKTOK" | "EMAIL";
+export type Platform = "INSTAGRAM" | "X" | "TIKTOK" | "YOUTUBE" | "EMAIL";
 export type Stage =
   | "TO_CONTACT"
   | "OUTREACH_SENT"
@@ -40,6 +40,7 @@ export const PLATFORMS: Record<
   INSTAGRAM: { label: "Instagram", short: "IG", isEmail: false, handlePlaceholder: "@handle" },
   X: { label: "X", short: "X", isEmail: false, handlePlaceholder: "@handle" },
   TIKTOK: { label: "TikTok", short: "TT", isEmail: false, handlePlaceholder: "@handle" },
+  YOUTUBE: { label: "YouTube", short: "YT", isEmail: false, handlePlaceholder: "@channel" },
   EMAIL: { label: "Email", short: "✉", isEmail: true, handlePlaceholder: "creator@example.com" },
 };
 
@@ -48,6 +49,7 @@ export type ContactFields = {
   instagramHandle: string | null;
   xHandle: string | null;
   tiktokHandle: string | null;
+  youtubeHandle: string | null;
   email: string | null;
   phone: string | null;
   primaryPlatform: Platform;
@@ -64,6 +66,7 @@ export function channels(c: ContactFields): ChannelInfo[] {
   if (c.instagramHandle?.trim()) out.push({ platform: "INSTAGRAM", handle: at(c.instagramHandle) });
   if (c.xHandle?.trim()) out.push({ platform: "X", handle: at(c.xHandle) });
   if (c.tiktokHandle?.trim()) out.push({ platform: "TIKTOK", handle: at(c.tiktokHandle) });
+  if (c.youtubeHandle?.trim()) out.push({ platform: "YOUTUBE", handle: at(c.youtubeHandle) });
   if (c.email?.trim()) out.push({ platform: "EMAIL", handle: c.email.trim() });
   return out;
 }
@@ -86,6 +89,8 @@ export function profileUrl(platform: Platform, handle: string): string {
       return `https://x.com/${stripAt(handle)}`;
     case "TIKTOK":
       return `https://www.tiktok.com/@${stripAt(handle)}`;
+    case "YOUTUBE":
+      return `https://www.youtube.com/@${stripAt(handle)}`;
     case "EMAIL":
       return `mailto:${handle}`;
   }
@@ -101,6 +106,9 @@ export function dmUrl(platform: Platform, handle: string): string {
     case "TIKTOK":
       // No public per-user DM deep link — land on the profile.
       return `https://www.tiktok.com/@${stripAt(handle)}`;
+    case "YOUTUBE":
+      // YouTube has no DMs — land on the channel.
+      return `https://www.youtube.com/@${stripAt(handle)}`;
     case "EMAIL":
       return `mailto:${handle}`;
   }
@@ -118,10 +126,14 @@ export type FollowerFields = {
   instagramFollowers: number | null;
   xFollowers: number | null;
   tiktokFollowers: number | null;
+  youtubeFollowers: number | null;
 };
 
 export const totalFollowers = (c: FollowerFields): number =>
-  (c.instagramFollowers ?? 0) + (c.xFollowers ?? 0) + (c.tiktokFollowers ?? 0);
+  (c.instagramFollowers ?? 0) +
+  (c.xFollowers ?? 0) +
+  (c.tiktokFollowers ?? 0) +
+  (c.youtubeFollowers ?? 0);
 
 /** Compact count for tight cells: 21.4M / 48K / 950. */
 export const fmtCompact = (n: number | null | undefined) => {

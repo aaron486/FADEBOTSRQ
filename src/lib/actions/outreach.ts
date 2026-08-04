@@ -34,6 +34,7 @@ export async function markDmSent(
     instagramHandle: creator.instagramHandle,
     xHandle: creator.xHandle,
     tiktokHandle: creator.tiktokHandle,
+    youtubeHandle: creator.youtubeHandle,
     email: creator.email,
     phone: creator.phone,
     primaryPlatform: creator.primaryPlatform as Platform,
