@@ -7,6 +7,46 @@ import { createCreator } from "@/lib/actions/creators";
 import { lookupCreator, LookupResult } from "@/lib/actions/lookup";
 
 type Found = Extract<LookupResult, { ok: true }>;
+type SocialPlatform = "INSTAGRAM" | "X" | "TIKTOK" | "YOUTUBE";
+
+// Turns a pasted profile link (instagram.com/druski, tiktok.com/@lilbaby, …)
+// into a platform + handle. Post/video links (reel, /p/, /watch, /status)
+// still resolve to the profile they belong to where the URL allows it.
+function parseProfileUrl(input: string): { platform: SocialPlatform; handle: string } | null {
+  const text = input.trim();
+  if (!/^(https?:\/\/|www\.|(m|www)?\.?(instagram|x|twitter|tiktok|youtube)\.com)/i.test(text)) return null;
+  let url: URL;
+  try {
+    url = new URL(/^https?:\/\//i.test(text) ? text : `https://${text}`);
+  } catch {
+    return null;
+  }
+  const host = url.hostname.replace(/^(www|m)\./, "").toLowerCase();
+  const segs = url.pathname.split("/").filter(Boolean);
+  const first = segs[0] ? decodeURIComponent(segs[0]) : "";
+  const handle = (h: string) => `@${h.replace(/^@/, "")}`;
+
+  if (host === "instagram.com") {
+    if (!first || ["p", "reel", "reels", "stories", "explore", "accounts", "tv", "direct"].includes(first.toLowerCase()))
+      return null;
+    return { platform: "INSTAGRAM", handle: handle(first) };
+  }
+  if (host === "x.com" || host === "twitter.com") {
+    if (!first || ["i", "home", "search", "explore", "hashtag", "intent", "settings", "messages", "notifications"].includes(first.toLowerCase()))
+      return null;
+    return { platform: "X", handle: handle(first) };
+  }
+  if (host === "tiktok.com") {
+    if (first.startsWith("@")) return { platform: "TIKTOK", handle: first };
+    return null;
+  }
+  if (host === "youtube.com") {
+    if (first.startsWith("@")) return { platform: "YOUTUBE", handle: first };
+    if ((first === "c" || first === "user") && segs[1]) return { platform: "YOUTUBE", handle: handle(decodeURIComponent(segs[1])) };
+    return null;
+  }
+  return null;
+}
 
 export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
   const router = useRouter();
@@ -79,15 +119,29 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
 
   function doLookup() {
     if (!name.trim() || searching) return;
+    // A pasted profile link anchors the search: prefill that channel, then
+    // find the same person on the other platforms.
+    const seed = parseProfileUrl(name);
+    if (seed) {
+      if (seed.platform === "INSTAGRAM") setInstagram(seed.handle);
+      if (seed.platform === "X") setX(seed.handle);
+      if (seed.platform === "TIKTOK") setTiktok(seed.handle);
+      if (seed.platform === "YOUTUBE") setYoutube(seed.handle);
+    }
     setError("");
     setLookupNote("");
     setSearching(true);
     startTransition(async () => {
-      const res = await lookupCreator(name);
+      const res = await lookupCreator(seed ? seed.handle : name, seed ?? undefined);
       setSearching(false);
       if (!res.ok) return setError(res.error);
       if (!res.found) {
-        setError(`Couldn't confidently find public profiles for "${name}" — you can still add them manually.`);
+        if (seed) {
+          setName(seed.handle.replace(/^@/, ""));
+          setError("Couldn't confidently match that profile across other platforms — the pasted channel is filled in below; add the rest manually.");
+        } else {
+          setError(`Couldn't confidently find public profiles for "${name}" — you can still add them manually.`);
+        }
         return;
       }
       applyLookup(res);
@@ -129,12 +183,12 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
     <form onSubmit={submit} className="space-y-4">
       {/* Name + auto-lookup */}
       <div>
-        <label className="field-label" htmlFor="name">Creator name</label>
+        <label className="field-label" htmlFor="name">Creator name or profile link</label>
         <div className="flex gap-2">
           <input
             id="name"
             className="input flex-1"
-            placeholder={aiEnabled ? `e.g. "Lil Baby" — then hit Find profiles` : "Creator name"}
+            placeholder={aiEnabled ? `e.g. "Lil Baby" or paste instagram.com/… — then hit Find profiles` : "Creator name"}
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => {
@@ -152,12 +206,15 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
         </div>
         {aiEnabled && !searching && !lookupNote && (
           <p className="text-[11px] text-ink-3 mt-1">
-            Searches the web for their official Instagram, X, TikTok, and YouTube handles, follower counts, niche, and public contact email.
+            Type a name, or drop a profile link from Instagram, X, TikTok, or YouTube — we&apos;ll find the same creator&apos;s
+            official handles on the other platforms, follower counts, niche, and public contact email.
           </p>
         )}
         {searching && (
           <p className="text-xs mt-2" style={{ color: "var(--accent)" }}>
-            Searching the web for {name}&apos;s official profiles — this takes a few seconds…
+            {parseProfileUrl(name)
+              ? "Reading that profile and searching for the same creator on other platforms — this takes a few seconds…"
+              : `Searching the web for ${name}'s official profiles — this takes a few seconds…`}
           </p>
         )}
         {lookupNote && (

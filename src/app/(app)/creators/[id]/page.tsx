@@ -51,6 +51,8 @@ export default async function CreatorPage({
         contractSentAt: creator.contractSentAt?.toISOString() ?? null,
         contractSignedAt: creator.contractSignedAt?.toISOString() ?? null,
         contractNotes: creator.contractNotes,
+        followersUpdatedAt: creator.followersUpdatedAt?.toISOString() ?? null,
+        updatedAt: creator.updatedAt.toISOString(),
       }}
       posts={creator.posts.map((p) => ({
         id: p.id,

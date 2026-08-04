@@ -174,3 +174,33 @@ export const fmtDateTime = (d: Date | string | null | undefined) =>
         hour: "numeric",
         minute: "2-digit",
       });
+
+/**
+ * Live profile picture via unavatar.io, keyed off the creator's handles —
+ * no API keys, no stored images. Returns null when there's nothing to key on.
+ */
+export function avatarUrl(c: ContactFields): string | null {
+  const h = (v: string | null) => (v?.trim() ? v.trim().replace(/^@/, "") : null);
+  const ig = h(c.instagramHandle);
+  if (ig) return `https://unavatar.io/instagram/${ig}`;
+  const tt = h(c.tiktokHandle);
+  if (tt) return `https://unavatar.io/tiktok/${tt}`;
+  const x = h(c.xHandle);
+  if (x) return `https://unavatar.io/x/${x}`;
+  const yt = h(c.youtubeHandle);
+  if (yt) return `https://unavatar.io/youtube/${yt}`;
+  if (c.email?.trim()) return `https://unavatar.io/${encodeURIComponent(c.email.trim())}`;
+  return null;
+}
+
+export function initials(name: string): string {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase() || "?"
+  );
+}

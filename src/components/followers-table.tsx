@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { stageMeta, totalFollowers, fmtNum, fmtCompact, fmtDate } from "@/lib/creator-meta";
-import { refreshFollowers } from "@/lib/actions/lookup";
+import { refreshProfiles } from "@/lib/actions/lookup";
 import type { CreatorRow } from "@/components/dashboard-view";
+import { CreatorAvatar } from "@/components/creator-avatar";
 
 type Col = "ig" | "tt" | "x" | "yt" | "total";
 
@@ -90,7 +91,7 @@ export function FollowersTable({ rows, aiEnabled }: { rows: CreatorRow[]; aiEnab
   async function refreshOne(id: string) {
     setBusyId(id);
     setNotice("");
-    const res = await refreshFollowers(id);
+    const res = await refreshProfiles(id);
     setBusyId(null);
     setNotice(
       res.ok
@@ -110,7 +111,7 @@ export function FollowersTable({ rows, aiEnabled }: { rows: CreatorRow[]; aiEnab
     let updated = 0;
     for (let i = 0; i < targets.length; i++) {
       setBusyId(targets[i].id);
-      const res = await refreshFollowers(targets[i].id);
+      const res = await refreshProfiles(targets[i].id);
       if (res.ok && res.changes.length) updated++;
       setBatch({ done: i + 1, total: targets.length });
       router.refresh();
@@ -137,7 +138,7 @@ export function FollowersTable({ rows, aiEnabled }: { rows: CreatorRow[]; aiEnab
           {notice && <span className="text-xs text-ink-2">{notice}</span>}
           {!notice && !batch && (
             <span className="text-[11px] text-ink-3">
-              Re-checks live follower counts via web search (~a few seconds per creator). Green/red numbers show change since the last check.
+              Re-checks live counts and finds missing profiles via web search (~a few seconds per creator). Green/red numbers show change since the last check.
             </span>
           )}
         </div>
@@ -172,8 +173,13 @@ export function FollowersTable({ rows, aiEnabled }: { rows: CreatorRow[]; aiEnab
               return (
                 <tr key={c.id} className="cursor-pointer hover:bg-accent/5" onClick={() => router.push(`/creators/${c.id}`)}>
                   <td className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--grid)" }}>
-                    <div className="font-semibold">{c.name}</div>
-                    <div className="text-xs text-ink-3">{c.niche ?? ""}</div>
+                    <div className="flex items-center gap-2.5">
+                      <CreatorAvatar creator={c} size={34} />
+                      <div>
+                        <div className="font-semibold">{c.name}</div>
+                        <div className="text-xs text-ink-3">{c.niche ?? ""}</div>
+                      </div>
+                    </div>
                   </td>
                   {COLS.map((col) => {
                     const v = col.value(c);

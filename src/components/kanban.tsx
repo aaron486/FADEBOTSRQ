@@ -23,6 +23,7 @@ import {
   fmtNum,
 } from "@/lib/creator-meta";
 import type { CreatorRow } from "@/components/dashboard-view";
+import { CreatorAvatar } from "@/components/creator-avatar";
 
 export function KanbanBoard({
   rows,
@@ -120,7 +121,10 @@ function Card({ row, overlay = false }: { row: CreatorRow; overlay?: boolean }) 
         boxShadow: overlay ? "0 6px 20px rgba(0,0,0,0.25)" : undefined,
       }}
     >
-      <div className="font-semibold leading-tight">{row.name}</div>
+      <div className="flex items-center gap-2">
+        <CreatorAvatar creator={row} size={24} />
+        <div className="font-semibold leading-tight">{row.name}</div>
+      </div>
       <div className="text-xs text-ink-3 mt-0.5">
         {(() => {
           const primary = primaryChannel(row);
