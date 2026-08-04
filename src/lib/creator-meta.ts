@@ -114,6 +114,24 @@ export function fillTemplate(text: string, c: { name: string } & ContactFields):
     .replace(/\{platform\}/g, primary ? PLATFORMS[primary.platform].label : "");
 }
 
+export type FollowerFields = {
+  instagramFollowers: number | null;
+  xFollowers: number | null;
+  tiktokFollowers: number | null;
+};
+
+export const totalFollowers = (c: FollowerFields): number =>
+  (c.instagramFollowers ?? 0) + (c.xFollowers ?? 0) + (c.tiktokFollowers ?? 0);
+
+/** Compact count for tight cells: 21.4M / 48K / 950. */
+export const fmtCompact = (n: number | null | undefined) => {
+  if (n == null) return "—";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (n >= 10_000) return `${Math.round(n / 1_000)}K`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+};
+
 export const fmtMoneyCents = (cents: number | null | undefined) =>
   cents == null
     ? "—"

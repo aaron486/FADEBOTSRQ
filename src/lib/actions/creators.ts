@@ -28,7 +28,9 @@ export type CreatorInput = {
   primaryPlatform: Platform;
   agencyName?: string | null;
   agencyContact?: string | null;
-  followers?: number | null;
+  instagramFollowers?: number | null;
+  xFollowers?: number | null;
+  tiktokFollowers?: number | null;
   niche?: string | null;
   notes?: string | null;
 };
@@ -43,7 +45,9 @@ function contactData(input: CreatorInput) {
     phone: clean(input.phone),
     agencyName: clean(input.agencyName),
     agencyContact: clean(input.agencyContact),
-    followers: input.followers ?? null,
+    instagramFollowers: input.instagramFollowers ?? null,
+    xFollowers: input.xFollowers ?? null,
+    tiktokFollowers: input.tiktokFollowers ?? null,
     niche: clean(input.niche),
     notes: input.notes?.trim() || null,
   };

@@ -39,7 +39,9 @@ export type CreatorDetailData = {
   primaryPlatform: Platform;
   agencyName: string | null;
   agencyContact: string | null;
-  followers: number | null;
+  instagramFollowers: number | null;
+  xFollowers: number | null;
+  tiktokFollowers: number | null;
   niche: string | null;
   notes: string | null;
   stage: Stage;
@@ -186,7 +188,9 @@ function ProfileSection({ creator }: { creator: CreatorDetailData }) {
     primary: creator.primaryPlatform,
     agencyName: creator.agencyName ?? "",
     agencyContact: creator.agencyContact ?? "",
-    followers: creator.followers?.toString() ?? "",
+    igFollowers: creator.instagramFollowers?.toString() ?? "",
+    xFollowers: creator.xFollowers?.toString() ?? "",
+    ttFollowers: creator.tiktokFollowers?.toString() ?? "",
     niche: creator.niche ?? "",
     notes: creator.notes ?? "",
   });
@@ -214,7 +218,9 @@ function ProfileSection({ creator }: { creator: CreatorDetailData }) {
         primaryPlatform: form.primary,
         agencyName: form.agencyName || null,
         agencyContact: form.agencyContact || null,
-        followers: form.followers === "" ? null : Number(form.followers),
+        instagramFollowers: form.igFollowers === "" ? null : Number(form.igFollowers),
+        xFollowers: form.xFollowers === "" ? null : Number(form.xFollowers),
+        tiktokFollowers: form.ttFollowers === "" ? null : Number(form.ttFollowers),
         niche: form.niche || null,
         notes: form.notes || null,
       });
@@ -246,16 +252,25 @@ function ProfileSection({ creator }: { creator: CreatorDetailData }) {
           </select>
         </div>
         <div>
-          <label className="field-label">Instagram</label>
-          <input className="input" placeholder="@handle" value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} />
+          <label className="field-label">Instagram · followers</label>
+          <div className="flex gap-2">
+            <input className="input flex-1" placeholder="@handle" value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} />
+            <input className="input w-28" type="number" min={0} placeholder="followers" value={form.igFollowers} onChange={(e) => setForm({ ...form, igFollowers: e.target.value })} />
+          </div>
         </div>
         <div>
-          <label className="field-label">X</label>
-          <input className="input" placeholder="@handle" value={form.x} onChange={(e) => setForm({ ...form, x: e.target.value })} />
+          <label className="field-label">X · followers</label>
+          <div className="flex gap-2">
+            <input className="input flex-1" placeholder="@handle" value={form.x} onChange={(e) => setForm({ ...form, x: e.target.value })} />
+            <input className="input w-28" type="number" min={0} placeholder="followers" value={form.xFollowers} onChange={(e) => setForm({ ...form, xFollowers: e.target.value })} />
+          </div>
         </div>
         <div>
-          <label className="field-label">TikTok</label>
-          <input className="input" placeholder="@handle" value={form.tiktok} onChange={(e) => setForm({ ...form, tiktok: e.target.value })} />
+          <label className="field-label">TikTok · followers</label>
+          <div className="flex gap-2">
+            <input className="input flex-1" placeholder="@handle" value={form.tiktok} onChange={(e) => setForm({ ...form, tiktok: e.target.value })} />
+            <input className="input w-28" type="number" min={0} placeholder="followers" value={form.ttFollowers} onChange={(e) => setForm({ ...form, ttFollowers: e.target.value })} />
+          </div>
         </div>
         <div>
           <label className="field-label">Email</label>
@@ -264,16 +279,6 @@ function ProfileSection({ creator }: { creator: CreatorDetailData }) {
         <div>
           <label className="field-label">Phone</label>
           <input className="input" type="tel" placeholder="+1 555 000 0000" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        </div>
-        <div>
-          <label className="field-label">Followers (primary)</label>
-          <input
-            className="input"
-            type="number"
-            min={0}
-            value={form.followers}
-            onChange={(e) => setForm({ ...form, followers: e.target.value })}
-          />
         </div>
         <div>
           <label className="field-label">Agency</label>
