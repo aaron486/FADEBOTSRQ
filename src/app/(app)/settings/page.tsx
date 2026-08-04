@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { AllowlistManager } from "./allowlist-manager";
@@ -25,6 +26,15 @@ export default async function SettingsPage() {
           createdAt: e.createdAt.toISOString(),
         }))}
       />
+      <div className="card p-4 mt-4 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold">Message templates</div>
+          <p className="text-xs text-ink-3">
+            Reusable outreach drafts — also reachable from the template picker in any creator&apos;s composer.
+          </p>
+        </div>
+        <Link href="/templates" className="btn btn-sm">Manage templates</Link>
+      </div>
     </div>
   );
 }

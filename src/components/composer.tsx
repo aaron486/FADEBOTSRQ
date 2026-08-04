@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import {
   Platform,
   PLATFORMS,
@@ -272,6 +273,9 @@ export function Composer({
           ))}
         </select>
         <span className="text-xs text-ink-3">{"{name} {handle} {platform}"}</span>
+        <Link href="/templates" className="text-xs text-ink-3 underline hover:text-ink">
+          Manage
+        </Link>
       </div>
 
       {isEmailChannel && (

@@ -139,6 +139,7 @@ model Creator {
   posts             Post[]
   activities        Activity[]
   followerSnapshots FollowerSnapshot[]
+  campaigns         CampaignCreator[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -160,6 +161,37 @@ model FollowerSnapshot {
   createdAt          DateTime @default(now())
 
   @@index([creatorId, createdAt])
+}
+
+enum CampaignStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+}
+
+// A push/promo grouping creators — e.g. "March Madness", "NFL Kickoff".
+model Campaign {
+  id          String            @id @default(cuid())
+  name        String
+  status      CampaignStatus    @default(ACTIVE)
+  budgetCents Int?
+  startDate   DateTime?
+  endDate     DateTime?
+  notes       String?
+  creators    CampaignCreator[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model CampaignCreator {
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creatorId  String
+  creator    Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  addedAt    DateTime @default(now())
+
+  @@id([campaignId, creatorId])
+  @@index([creatorId])
 }
 
 model Template {

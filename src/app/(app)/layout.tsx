@@ -23,7 +23,7 @@ export default async function AppLayout({
           </Link>
           <nav className="flex items-center gap-4 text-sm text-ink-2">
             <Link href="/" className="hover:text-ink">Dashboard</Link>
-            <Link href="/templates" className="hover:text-ink">Templates</Link>
+            <Link href="/campaigns" className="hover:text-ink">Campaigns</Link>
             <Link href="/settings" className="hover:text-ink">Settings</Link>
           </nav>
         </div>
