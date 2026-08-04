@@ -26,6 +26,17 @@ export const STAGES: { key: Stage; label: string; colorVar: string }[] = [
 export const stageIndex = (s: Stage) => STAGES.findIndex((x) => x.key === s);
 export const stageMeta = (s: Stage) => STAGES.find((x) => x.key === s) ?? STAGES[0];
 
+export type CampaignStatus = "PLANNED" | "ACTIVE" | "COMPLETED";
+
+export const CAMPAIGN_STATUSES: { key: CampaignStatus; label: string; colorVar: string }[] = [
+  { key: "PLANNED", label: "Planned", colorVar: "var(--stage-2)" },
+  { key: "ACTIVE", label: "Active", colorVar: "var(--stage-4)" },
+  { key: "COMPLETED", label: "Completed", colorVar: "var(--stage-6)" },
+];
+
+export const campaignStatusMeta = (s: CampaignStatus) =>
+  CAMPAIGN_STATUSES.find((x) => x.key === s) ?? CAMPAIGN_STATUSES[1];
+
 export const CONTRACT_STATUSES: { key: ContractStatus; label: string }[] = [
   { key: "NONE", label: "None" },
   { key: "DRAFTING", label: "Drafting" },
