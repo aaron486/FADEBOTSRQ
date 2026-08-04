@@ -31,6 +31,10 @@ export type CreatorRow = {
   instagramFollowers: number | null;
   xFollowers: number | null;
   tiktokFollowers: number | null;
+  igDelta: number | null;
+  xDelta: number | null;
+  ttDelta: number | null;
+  followersUpdatedAt: string | null;
   niche: string | null;
   notes: string | null;
   stage: Stage;
@@ -72,7 +76,13 @@ function readView(): ViewMode {
   }
 }
 
-export function DashboardView({ rows: serverRows }: { rows: CreatorRow[] }) {
+export function DashboardView({
+  rows: serverRows,
+  aiEnabled = false,
+}: {
+  rows: CreatorRow[];
+  aiEnabled?: boolean;
+}) {
   // Local copy so kanban drags apply optimistically; resyncs when the server
   // revalidates and sends fresh props.
   const [rows, setRows] = useState(serverRows);
@@ -267,7 +277,7 @@ export function DashboardView({ rows: serverRows }: { rows: CreatorRow[] }) {
       ) : view === "board" ? (
         <KanbanBoard rows={filtered} onStageChange={moveStage} />
       ) : (
-        <FollowersTable rows={filtered} />
+        <FollowersTable rows={filtered} aiEnabled={aiEnabled} />
       )}
     </div>
   );

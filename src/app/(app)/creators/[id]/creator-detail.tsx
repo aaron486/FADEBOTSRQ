@@ -26,6 +26,7 @@ import {
   deletePost,
   addNote,
 } from "@/lib/actions/creators";
+import { refreshFollowers } from "@/lib/actions/lookup";
 import { Composer } from "@/components/composer";
 
 export type CreatorDetailData = {
@@ -154,7 +155,13 @@ export function CreatorDetail({
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-4">
-          <ProfileSection creator={creator} />
+          <ProfileSection
+            // Remount when counts change server-side (e.g. after a refresh),
+            // so the form picks up the new numbers.
+            key={`${creator.instagramFollowers}-${creator.xFollowers}-${creator.tiktokFollowers}`}
+            creator={creator}
+            aiEnabled={aiEnabled}
+          />
           <DealSection creator={creator} />
           <PostsSection creator={creator} posts={posts} />
         </div>
@@ -177,7 +184,20 @@ export function CreatorDetail({
 
 /* ---------------- profile ---------------- */
 
-function ProfileSection({ creator }: { creator: CreatorDetailData }) {
+function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; aiEnabled: boolean }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshNote, setRefreshNote] = useState("");
+
+  async function doRefresh() {
+    setRefreshing(true);
+    setRefreshNote("");
+    const res = await refreshFollowers(creator.id);
+    setRefreshing(false);
+    setRefreshNote(
+      res.ok ? (res.changes.length ? `Updated: ${res.changes.join(", ")}` : "Verified — no change") : res.error
+    );
+  }
+
   const [form, setForm] = useState({
     name: creator.name,
     instagram: creator.instagramHandle ?? "",
@@ -232,6 +252,14 @@ function ProfileSection({ creator }: { creator: CreatorDetailData }) {
 
   return (
     <Section title="Profile & contacts">
+      {aiEnabled && (
+        <div className="flex items-center gap-2 mb-3">
+          <button className="btn btn-sm" onClick={doRefresh} disabled={refreshing}>
+            {refreshing ? "Checking…" : "↻ Refresh follower counts"}
+          </button>
+          {refreshNote && <span className="text-xs text-ink-2">{refreshNote}</span>}
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="field-label">Name</label>
