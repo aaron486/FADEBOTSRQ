@@ -26,8 +26,9 @@ import {
   deletePost,
   addNote,
 } from "@/lib/actions/creators";
-import { refreshFollowers } from "@/lib/actions/lookup";
+import { refreshProfiles } from "@/lib/actions/lookup";
 import { Composer } from "@/components/composer";
+import { CreatorAvatar } from "@/components/creator-avatar";
 
 export type CreatorDetailData = {
   id: string;
@@ -55,6 +56,8 @@ export type CreatorDetailData = {
   contractSentAt: string | null;
   contractSignedAt: string | null;
   contractNotes: string | null;
+  followersUpdatedAt: string | null;
+  updatedAt: string;
 };
 
 export type MessageItem = {
@@ -116,6 +119,7 @@ export function CreatorDetail({
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/" className="btn btn-ghost btn-sm">← Dashboard</Link>
+        <CreatorAvatar creator={creator} size={40} />
         <h1 className="text-xl font-bold">{creator.name}</h1>
         <span className="flex flex-wrap items-center gap-2 text-sm">
           {channels(creator).map((ch) => (
@@ -160,7 +164,7 @@ export function CreatorDetail({
           <ProfileSection
             // Remount when counts change server-side (e.g. after a refresh),
             // so the form picks up the new numbers.
-            key={`${creator.instagramFollowers}-${creator.xFollowers}-${creator.tiktokFollowers}-${creator.youtubeFollowers}`}
+            key={creator.updatedAt}
             creator={creator}
             aiEnabled={aiEnabled}
           />
@@ -187,19 +191,6 @@ export function CreatorDetail({
 /* ---------------- profile ---------------- */
 
 function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; aiEnabled: boolean }) {
-  const [refreshing, setRefreshing] = useState(false);
-  const [refreshNote, setRefreshNote] = useState("");
-
-  async function doRefresh() {
-    setRefreshing(true);
-    setRefreshNote("");
-    const res = await refreshFollowers(creator.id);
-    setRefreshing(false);
-    setRefreshNote(
-      res.ok ? (res.changes.length ? `Updated: ${res.changes.join(", ")}` : "Verified — no change") : res.error
-    );
-  }
-
   const [form, setForm] = useState({
     name: creator.name,
     instagram: creator.instagramHandle ?? "",
@@ -221,14 +212,39 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
   const [pending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [rowBusy, setRowBusy] = useState<Platform | "ALL" | null>(null);
+  const [refreshNote, setRefreshNote] = useState("");
+
+  const SOCIAL_ROWS: {
+    key: Extract<Platform, "INSTAGRAM" | "X" | "TIKTOK" | "YOUTUBE">;
+    label: string;
+    handleKey: "instagram" | "x" | "tiktok" | "youtube";
+    countKey: "igFollowers" | "xFollowers" | "ttFollowers" | "ytFollowers";
+    countLabel: string;
+  }[] = [
+    { key: "INSTAGRAM", label: "Instagram", handleKey: "instagram", countKey: "igFollowers", countLabel: "followers" },
+    { key: "X", label: "X", handleKey: "x", countKey: "xFollowers", countLabel: "followers" },
+    { key: "TIKTOK", label: "TikTok", handleKey: "tiktok", countKey: "ttFollowers", countLabel: "followers" },
+    { key: "YOUTUBE", label: "YouTube", handleKey: "youtube", countKey: "ytFollowers", countLabel: "subscribers" },
+  ];
 
   const available: { key: Platform; label: string }[] = [
-    { key: "INSTAGRAM" as Platform, label: "Instagram", has: !!form.instagram.trim() },
-    { key: "X" as Platform, label: "X", has: !!form.x.trim() },
-    { key: "TIKTOK" as Platform, label: "TikTok", has: !!form.tiktok.trim() },
-    { key: "YOUTUBE" as Platform, label: "YouTube", has: !!form.youtube.trim() },
-    { key: "EMAIL" as Platform, label: "Email", has: !!form.email.trim() },
-  ].filter((c) => c.has);
+    ...SOCIAL_ROWS.filter((r) => form[r.handleKey].trim()).map((r) => ({ key: r.key as Platform, label: r.label })),
+    ...(form.email.trim() ? [{ key: "EMAIL" as Platform, label: "Email" }] : []),
+  ];
+
+  async function refreshRow(row: (typeof SOCIAL_ROWS)[number] | null) {
+    setRefreshNote("");
+    setRowBusy(row ? row.key : "ALL");
+    const res = await refreshProfiles(
+      creator.id,
+      row ? { platform: row.key, handleOverride: form[row.handleKey].trim() || undefined } : undefined
+    );
+    setRowBusy(null);
+    setRefreshNote(
+      res.ok ? (res.changes.length ? res.changes.join(", ") : "Verified — no change") : res.error
+    );
+  }
 
   function save() {
     setError("");
@@ -257,94 +273,141 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
     });
   }
 
+  const busy = !!rowBusy || pending;
+
   return (
     <Section title="Profile & contacts">
-      {aiEnabled && (
-        <div className="flex items-center gap-2 mb-3">
-          <button className="btn btn-sm" onClick={doRefresh} disabled={refreshing}>
-            {refreshing ? "Checking…" : "↻ Refresh follower counts"}
-          </button>
-          {refreshNote && <span className="text-xs text-ink-2">{refreshNote}</span>}
+      {/* Socials — one row per platform: handle · count · open · refresh */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">Socials</span>
+          {aiEnabled && (
+            <button className="btn btn-sm btn-ghost" onClick={() => refreshRow(null)} disabled={busy}>
+              {rowBusy === "ALL" ? "Searching…" : "↻ Refresh all"}
+            </button>
+          )}
         </div>
-      )}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label className="field-label">Name</label>
-          <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        </div>
-        <div>
-          <label className="field-label">Primary outreach channel</label>
-          <select
-            className="input"
-            value={form.primary}
-            onChange={(e) => setForm({ ...form, primary: e.target.value as Platform })}
-          >
-            {(available.length ? available : [{ key: form.primary, label: PLATFORMS[form.primary].label }]).map(
-              (c) => (
-                <option key={c.key} value={c.key}>{c.label}</option>
-              )
-            )}
-          </select>
-        </div>
-        <div>
-          <label className="field-label">Instagram · followers</label>
-          <div className="flex gap-2">
-            <input className="input flex-1" placeholder="@handle" value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} />
-            <input className="input w-28" type="number" min={0} placeholder="followers" value={form.igFollowers} onChange={(e) => setForm({ ...form, igFollowers: e.target.value })} />
+        {SOCIAL_ROWS.map((row) => {
+          const handle = form[row.handleKey].trim();
+          return (
+            <div key={row.key} className="flex items-center gap-2">
+              <span className="w-[76px] text-xs text-ink-2 flex-none">{row.label}</span>
+              <input
+                className="input flex-1 min-w-[120px]"
+                placeholder={row.key === "YOUTUBE" ? "@channel" : "@handle"}
+                value={form[row.handleKey]}
+                onChange={(e) => setForm({ ...form, [row.handleKey]: e.target.value })}
+              />
+              <input
+                className="input w-28"
+                type="number"
+                min={0}
+                placeholder={row.countLabel}
+                title={row.countLabel}
+                value={form[row.countKey]}
+                onChange={(e) => setForm({ ...form, [row.countKey]: e.target.value })}
+              />
+              {handle ? (
+                <a
+                  className="btn btn-sm btn-ghost"
+                  href={profileUrl(row.key, handle)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Open ${row.label} profile`}
+                >
+                  ↗
+                </a>
+              ) : (
+                <span className="btn btn-sm btn-ghost opacity-0 pointer-events-none">↗</span>
+              )}
+              {aiEnabled && (
+                <button
+                  className="btn btn-sm"
+                  disabled={busy}
+                  onClick={() => refreshRow(row)}
+                  title={handle ? `Refresh ${row.label} ${row.countLabel} via web search` : `Find their ${row.label} profile via web search`}
+                >
+                  {rowBusy === row.key ? "…" : handle ? "↻" : "🔍"}
+                </button>
+              )}
+            </div>
+          );
+        })}
+        {aiEnabled && (
+          <p className="text-[11px] text-ink-3">
+            ↻ re-checks that platform&apos;s count · 🔍 finds the profile when the handle is empty.
+            {creator.followersUpdatedAt ? ` Last checked ${fmtDate(creator.followersUpdatedAt)}.` : ""}
+          </p>
+        )}
+        {refreshNote && (
+          <p className="text-xs" style={{ color: refreshNote.includes("Couldn") || refreshNote.includes("failed") || refreshNote.includes("Rate") ? "var(--critical)" : "var(--good-text)" }}>
+            {refreshNote}
+          </p>
+        )}
+      </div>
+
+      {/* Direct contact */}
+      <div className="mt-4 space-y-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">Direct contact</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="field-label">Email</label>
+            <input className="input" type="email" placeholder="creator@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </div>
-        </div>
-        <div>
-          <label className="field-label">X · followers</label>
-          <div className="flex gap-2">
-            <input className="input flex-1" placeholder="@handle" value={form.x} onChange={(e) => setForm({ ...form, x: e.target.value })} />
-            <input className="input w-28" type="number" min={0} placeholder="followers" value={form.xFollowers} onChange={(e) => setForm({ ...form, xFollowers: e.target.value })} />
+          <div>
+            <label className="field-label">Phone</label>
+            <input className="input" type="tel" placeholder="+1 555 000 0000" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
           </div>
-        </div>
-        <div>
-          <label className="field-label">TikTok · followers</label>
-          <div className="flex gap-2">
-            <input className="input flex-1" placeholder="@handle" value={form.tiktok} onChange={(e) => setForm({ ...form, tiktok: e.target.value })} />
-            <input className="input w-28" type="number" min={0} placeholder="followers" value={form.ttFollowers} onChange={(e) => setForm({ ...form, ttFollowers: e.target.value })} />
+          <div>
+            <label className="field-label">Agency</label>
+            <input className="input" placeholder="e.g. QC / WME" value={form.agencyName} onChange={(e) => setForm({ ...form, agencyName: e.target.value })} />
           </div>
-        </div>
-        <div>
-          <label className="field-label">YouTube · subscribers</label>
-          <div className="flex gap-2">
-            <input className="input flex-1" placeholder="@channel" value={form.youtube} onChange={(e) => setForm({ ...form, youtube: e.target.value })} />
-            <input className="input w-28" type="number" min={0} placeholder="subs" value={form.ytFollowers} onChange={(e) => setForm({ ...form, ytFollowers: e.target.value })} />
+          <div>
+            <label className="field-label">Agency contact</label>
+            <input className="input" placeholder="agent name, email, or phone" value={form.agencyContact} onChange={(e) => setForm({ ...form, agencyContact: e.target.value })} />
           </div>
-        </div>
-        <div>
-          <label className="field-label">Email</label>
-          <input className="input" type="email" placeholder="creator@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-        </div>
-        <div>
-          <label className="field-label">Phone</label>
-          <input className="input" type="tel" placeholder="+1 555 000 0000" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-        </div>
-        <div>
-          <label className="field-label">Agency</label>
-          <input className="input" placeholder="e.g. QC / WME" value={form.agencyName} onChange={(e) => setForm({ ...form, agencyName: e.target.value })} />
-        </div>
-        <div>
-          <label className="field-label">Agency contact</label>
-          <input className="input" placeholder="agent name, email, or phone" value={form.agencyContact} onChange={(e) => setForm({ ...form, agencyContact: e.target.value })} />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="field-label">Niche</label>
-          <input className="input" value={form.niche} onChange={(e) => setForm({ ...form, niche: e.target.value })} />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="field-label">Notes</label>
-          <textarea
-            className="input"
-            rows={2}
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
         </div>
       </div>
-      <div className="flex items-center justify-between mt-3">
+
+      {/* Details */}
+      <div className="mt-4 space-y-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-3">Details</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="field-label">Name</label>
+            <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="field-label">Primary outreach channel</label>
+            <select
+              className="input"
+              value={form.primary}
+              onChange={(e) => setForm({ ...form, primary: e.target.value as Platform })}
+            >
+              {(available.length ? available : [{ key: form.primary, label: PLATFORMS[form.primary].label }]).map(
+                (c) => (
+                  <option key={c.key} value={c.key}>{c.label}</option>
+                )
+              )}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="field-label">Niche</label>
+            <input className="input" value={form.niche} onChange={(e) => setForm({ ...form, niche: e.target.value })} />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="field-label">Notes</label>
+            <textarea
+              className="input"
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between mt-4">
         <button
           className="btn btn-danger btn-sm"
           onClick={() => {
@@ -366,6 +429,7 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
     </Section>
   );
 }
+
 
 /* ---------------- deal & contract ---------------- */
 

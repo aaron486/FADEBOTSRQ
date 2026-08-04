@@ -33,13 +33,24 @@ export type LookupResult =
  * using Claude's server-side web search tool. Follower counts are what public
  * pages report — treat as approximate.
  */
-export async function lookupCreator(rawName: string): Promise<LookupResult> {
+export async function lookupCreator(
+  rawName: string,
+  seed?: { platform: "INSTAGRAM" | "X" | "TIKTOK" | "YOUTUBE"; handle: string }
+): Promise<LookupResult> {
   await requireUser();
   if (!process.env.ANTHROPIC_API_KEY) {
     return { ok: false, error: "Profile lookup needs ANTHROPIC_API_KEY set on the server." };
   }
   const name = rawName.trim();
   if (name.length < 2) return { ok: false, error: "Type a creator name first." };
+
+  const seedUrls = {
+    INSTAGRAM: (h: string) => `https://instagram.com/${h.replace(/^@/, "")}`,
+    X: (h: string) => `https://x.com/${h.replace(/^@/, "")}`,
+    TIKTOK: (h: string) => `https://www.tiktok.com/@${h.replace(/^@/, "")}`,
+    YOUTUBE: (h: string) => `https://www.youtube.com/@${h.replace(/^@/, "")}`,
+  } as const;
+  const seedLabel = { INSTAGRAM: "Instagram", X: "X", TIKTOK: "TikTok", YOUTUBE: "YouTube" } as const;
 
   const client = new Anthropic();
 
@@ -60,7 +71,14 @@ After searching, respond with ONLY a JSON object (no prose, no markdown fences) 
 For YouTube, "followers" means subscribers. Follower counts are integers (approximate is fine — round from '21.4M' style figures).`;
 
   let messages: Anthropic.MessageParam[] = [
-    { role: "user", content: `Find the official social profiles for the creator: "${name}"` },
+    {
+      role: "user",
+      content: seed
+        ? `This ${seedLabel[seed.platform]} profile is the identity anchor — it definitely belongs to the creator we want: ${seedUrls[
+            seed.platform
+          ](seed.handle)}\nFind out who this creator is (their proper display name) and locate the SAME person's official profiles on the other platforms, plus follower counts for all profiles including the anchor.`
+        : `Find the official social profiles for the creator: "${name}"`,
+    },
   ];
 
   const request = (msgs: Anthropic.MessageParam[]) =>
@@ -155,53 +173,108 @@ export type RefreshResult =
   | { ok: true; changes: string[] }
   | { ok: false; error: string };
 
+const SOCIALS = ["INSTAGRAM", "X", "TIKTOK", "YOUTUBE"] as const;
+export type SocialPlatform = (typeof SOCIALS)[number];
+
+const SOCIAL_META = {
+  INSTAGRAM: {
+    label: "Instagram",
+    handleField: "instagramHandle",
+    countField: "instagramFollowers",
+    jsonKey: "instagram",
+    url: (h: string) => `https://instagram.com/${h.replace(/^@/, "")}`,
+  },
+  X: {
+    label: "X",
+    handleField: "xHandle",
+    countField: "xFollowers",
+    jsonKey: "x",
+    url: (h: string) => `https://x.com/${h.replace(/^@/, "")}`,
+  },
+  TIKTOK: {
+    label: "TikTok",
+    handleField: "tiktokHandle",
+    countField: "tiktokFollowers",
+    jsonKey: "tiktok",
+    url: (h: string) => `https://www.tiktok.com/@${h.replace(/^@/, "")}`,
+  },
+  YOUTUBE: {
+    label: "YouTube",
+    handleField: "youtubeHandle",
+    countField: "youtubeFollowers",
+    jsonKey: "youtube",
+    url: (h: string) => `https://www.youtube.com/@${h.replace(/^@/, "")}`,
+  },
+} as const;
+
 /**
- * Re-check a creator's current follower counts on their known profiles via
- * web search, update the stored counts, and record a snapshot so the
- * dashboard can show growth over time.
+ * Refresh a creator's social profiles via web search. For platforms with a
+ * known handle it verifies and updates the follower count; for platforms
+ * WITHOUT a handle it finds the official profile and adds it. Pass
+ * opts.platform to target one platform (opts.handleOverride uses an unsaved
+ * handle from the form); omit for all four.
  */
-export async function refreshFollowers(creatorId: string): Promise<RefreshResult> {
+export async function refreshProfiles(
+  creatorId: string,
+  opts?: { platform?: SocialPlatform; handleOverride?: string }
+): Promise<RefreshResult> {
   const user = await requireUser();
   if (!process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, error: "Follower refresh needs ANTHROPIC_API_KEY set on the server." };
+    return { ok: false, error: "Profile refresh needs ANTHROPIC_API_KEY set on the server." };
   }
 
   const creator = await prisma.creator.findUniqueOrThrow({ where: { id: creatorId } });
-  const profiles = [
-    creator.instagramHandle
-      ? `Instagram: https://instagram.com/${creator.instagramHandle.replace(/^@/, "")}`
-      : null,
-    creator.xHandle ? `X: https://x.com/${creator.xHandle.replace(/^@/, "")}` : null,
-    creator.tiktokHandle
-      ? `TikTok: https://www.tiktok.com/@${creator.tiktokHandle.replace(/^@/, "")}`
-      : null,
-    creator.youtubeHandle
-      ? `YouTube: https://www.youtube.com/@${creator.youtubeHandle.replace(/^@/, "")}`
-      : null,
-  ].filter(Boolean);
-  if (profiles.length === 0) {
-    return { ok: false, error: "No social handles on file to refresh." };
+  const targets: SocialPlatform[] = opts?.platform ? [opts.platform] : [...SOCIALS];
+
+  const handleFor = (p: SocialPlatform): string | null => {
+    if (opts?.platform === p && opts.handleOverride?.trim()) return opts.handleOverride.trim();
+    return (creator[SOCIAL_META[p].handleField] as string | null)?.trim() || null;
+  };
+
+  const verifyLines: string[] = [];
+  const findLabels: string[] = [];
+  for (const p of targets) {
+    const h = handleFor(p);
+    if (h) verifyLines.push(`${SOCIAL_META[p].label}: ${SOCIAL_META[p].url(h)}`);
+    else findLabels.push(SOCIAL_META[p].label);
   }
 
-  const client = new Anthropic();
-  const system = `You look up CURRENT follower counts for specific, known social profiles. Use web search. Only report a count you can actually source for the EXACT profile given — never estimate from a different account and never reuse stale numbers you can't verify. Respond with ONLY a JSON object (no prose, no markdown fences): {"instagram": 21000000 | null, "x": 3400000 | null, "tiktok": 9000000 | null, "youtube": 5000000 | null} (youtube = subscribers) — integers (round "21.4M"-style figures), null for any profile you couldn't verify or that wasn't asked about.`;
+  // Known profiles outside the targeted set still help disambiguation.
+  const contextLines = SOCIALS.filter((p) => !targets.includes(p))
+    .map((p) => {
+      const h = (creator[SOCIAL_META[p].handleField] as string | null)?.trim();
+      return h ? `${SOCIAL_META[p].label}: ${SOCIAL_META[p].url(h)}` : null;
+    })
+    .filter(Boolean) as string[];
 
-  let messages: Anthropic.MessageParam[] = [
-    {
-      role: "user",
-      content: `Current follower counts for ${creator.name}'s profiles:\n${profiles.join("\n")}`,
-    },
-  ];
+  const client = new Anthropic();
+  const system = `You research creators' social profiles. Use web search.
+- For profiles listed under VERIFY: get the CURRENT follower/subscriber count for that EXACT profile. Never substitute a different account.
+- For platforms listed under FIND: locate the creator's OFFICIAL profile on that platform (use the known profiles as identity anchors; beware impersonator/fan accounts). Only report a handle you are confident belongs to this exact creator — otherwise null.
+Respond with ONLY a JSON object (no prose, no markdown fences) containing exactly these keys: ${targets
+    .map((p) => `"${SOCIAL_META[p].jsonKey}"`)
+    .join(", ")} — each either {"handle": "@handle", "followers": 123456} or null. "followers" means subscribers for YouTube; integers, null when unverifiable.`;
+
+  const userMsg = [
+    `Creator: ${creator.name}${creator.niche ? ` (${creator.niche})` : ""}`,
+    contextLines.length ? `Known profiles (context): ${contextLines.join("; ")}` : null,
+    verifyLines.length ? `VERIFY current counts for:\n${verifyLines.join("\n")}` : null,
+    findLabels.length ? `FIND their official profiles on: ${findLabels.join(", ")}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+
   const request = (msgs: Anthropic.MessageParam[]) =>
     client.messages.create({
       model: MODEL,
-      max_tokens: 2048,
+      max_tokens: 3072,
       output_config: { effort: "low" },
       system,
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 6 }],
       messages: msgs,
     });
 
+  let messages: Anthropic.MessageParam[] = [{ role: "user", content: userMsg }];
   let response: Anthropic.Message;
   try {
     response = await request(messages);
@@ -211,7 +284,7 @@ export async function refreshFollowers(creatorId: string): Promise<RefreshResult
       response = await request(messages);
     }
   } catch (e) {
-    console.error("[lookup] refreshFollowers failed", e);
+    console.error("[lookup] refreshProfiles failed", e);
     if (e instanceof Anthropic.RateLimitError) {
       return { ok: false, error: "Rate-limited — try again in a moment." };
     }
@@ -234,59 +307,77 @@ export async function refreshFollowers(creatorId: string): Promise<RefreshResult
     return { ok: false, error: "Couldn't parse the refresh result — try again." };
   }
 
-  let parsed: {
-    instagram?: number | null;
-    x?: number | null;
-    tiktok?: number | null;
-    youtube?: number | null;
-  };
+  let parsed: Record<string, { handle?: string | null; followers?: number | null } | null>;
   try {
     parsed = JSON.parse(text.slice(start, end + 1));
   } catch {
     return { ok: false, error: "Couldn't parse the refresh result — try again." };
   }
 
-  const norm = (v: unknown): number | null =>
+  const normHandle = (h?: string | null) =>
+    h?.trim() ? (h.trim().startsWith("@") ? h.trim() : `@${h.trim()}`) : null;
+  const sameHandle = (a: string, b: string) =>
+    a.replace(/^@/, "").toLowerCase() === b.replace(/^@/, "").toLowerCase();
+  const normCount = (v: unknown): number | null =>
     typeof v === "number" && v > 0 ? Math.round(v) : null;
-  const next = {
-    instagram: creator.instagramHandle ? norm(parsed.instagram) : null,
-    x: creator.xHandle ? norm(parsed.x) : null,
-    tiktok: creator.tiktokHandle ? norm(parsed.tiktok) : null,
-    youtube: creator.youtubeHandle ? norm(parsed.youtube) : null,
-  };
-  if (next.instagram == null && next.x == null && next.tiktok == null && next.youtube == null) {
-    return { ok: false, error: "Couldn't verify any counts this time — try again later." };
+  const fmt = (n: number) => n.toLocaleString("en-US");
+
+  const data: Record<string, unknown> = {};
+  const changes: string[] = [];
+  let touchedCounts = false;
+
+  for (const p of targets) {
+    const meta = SOCIAL_META[p];
+    const entry = parsed[meta.jsonKey];
+    const foundHandle = normHandle(entry?.handle);
+    const foundCount = normCount(entry?.followers);
+    const dbHandle = (creator[meta.handleField] as string | null)?.trim() || null;
+    const dbCount = creator[meta.countField] as number | null;
+    const overridden = opts?.platform === p && !!opts.handleOverride?.trim();
+
+    // Add / correct the handle only when we had none, or the user typed one.
+    if (foundHandle && (!dbHandle || overridden)) {
+      data[meta.handleField] = foundHandle;
+      if (!dbHandle) changes.push(`${meta.label} profile added: ${foundHandle}`);
+      else if (!sameHandle(dbHandle, foundHandle)) changes.push(`${meta.label} handle set to ${foundHandle}`);
+    }
+
+    // Accept the count when it clearly belongs to this creator's profile.
+    const handleAgrees =
+      !dbHandle || overridden || !foundHandle || sameHandle(dbHandle, foundHandle);
+    if (foundCount != null && handleAgrees) {
+      data[meta.countField] = foundCount;
+      touchedCounts = true;
+      if (dbCount !== foundCount) {
+        changes.push(`${meta.label} ${dbCount != null ? fmt(dbCount) : "—"} → ${fmt(foundCount)}`);
+      }
+    }
   }
 
-  const fmt = (n: number) => n.toLocaleString("en-US");
-  const changes: string[] = [];
-  const diff = (label: string, oldV: number | null, newV: number | null) => {
-    if (newV == null) return;
-    if (oldV !== newV) changes.push(`${label} ${oldV != null ? fmt(oldV) : "—"} → ${fmt(newV)}`);
-  };
-  diff("IG", creator.instagramFollowers, next.instagram);
-  diff("X", creator.xFollowers, next.x);
-  diff("TikTok", creator.tiktokFollowers, next.tiktok);
-  diff("YouTube", creator.youtubeFollowers, next.youtube);
+  if (Object.keys(data).length === 0) {
+    return {
+      ok: false,
+      error: targets.length === 1 ? "Couldn't verify that profile this time — try again later." : "Couldn't verify any profiles this time — try again later.",
+    };
+  }
 
-  // Only overwrite counts we actually verified; keep the old value otherwise.
-  const updated = {
-    instagramFollowers: next.instagram ?? creator.instagramFollowers,
-    xFollowers: next.x ?? creator.xFollowers,
-    tiktokFollowers: next.tiktok ?? creator.tiktokFollowers,
-    youtubeFollowers: next.youtube ?? creator.youtubeFollowers,
+  const finalCounts = {
+    instagramFollowers: (data.instagramFollowers as number | undefined) ?? creator.instagramFollowers,
+    xFollowers: (data.xFollowers as number | undefined) ?? creator.xFollowers,
+    tiktokFollowers: (data.tiktokFollowers as number | undefined) ?? creator.tiktokFollowers,
+    youtubeFollowers: (data.youtubeFollowers as number | undefined) ?? creator.youtubeFollowers,
   };
+
   await prisma.creator.update({
     where: { id: creatorId },
     data: {
-      ...updated,
-      followersUpdatedAt: new Date(),
-      followerSnapshots: { create: { ...updated } },
+      ...data,
+      ...(touchedCounts
+        ? { followersUpdatedAt: new Date(), followerSnapshots: { create: { ...finalCounts } } }
+        : {}),
       activities: {
         create: {
-          text: changes.length
-            ? `Follower counts refreshed: ${changes.join(", ")}`
-            : "Follower counts refreshed — no change",
+          text: changes.length ? `Profile refresh: ${changes.join(", ")}` : "Profile refresh — no change",
           userId: user.id,
         },
       },

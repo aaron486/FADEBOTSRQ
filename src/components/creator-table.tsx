@@ -16,6 +16,7 @@ import {
   fmtDate,
 } from "@/lib/creator-meta";
 import type { CreatorRow } from "@/components/dashboard-view";
+import { CreatorAvatar } from "@/components/creator-avatar";
 
 export function CreatorTable({
   rows,
@@ -67,11 +68,16 @@ export function CreatorTable({
                 onClick={() => router.push(`/creators/${c.id}`)}
               >
                 <td className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--grid)" }}>
-                  <div className="font-semibold">{c.name}</div>
-                  <div className="text-xs text-ink-3">
-                    {[c.niche, totalFollowers(c) > 0 ? `${fmtNum(totalFollowers(c))} followers` : null]
-                      .filter(Boolean)
-                      .join(" · ")}
+                  <div className="flex items-center gap-2.5">
+                    <CreatorAvatar creator={c} size={34} />
+                    <div>
+                      <div className="font-semibold">{c.name}</div>
+                      <div className="text-xs text-ink-3">
+                        {[c.niche, totalFollowers(c) > 0 ? `${fmtNum(totalFollowers(c))} followers` : null]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </div>
+                    </div>
                   </div>
                 </td>
                 <td className="px-3 py-2.5 whitespace-nowrap" style={{ borderBottom: "1px solid var(--grid)" }}>
