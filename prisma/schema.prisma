@@ -115,6 +115,7 @@ model Creator {
   instagramFollowers Int?
   xFollowers         Int?
   tiktokFollowers    Int?
+  followersUpdatedAt DateTime?
 
   niche     String?
   notes     String?
@@ -131,15 +132,30 @@ model Creator {
   ownerId String?
   owner   User?   @relation("CreatorOwner", fields: [ownerId], references: [id], onDelete: SetNull)
 
-  messages   OutreachMessage[]
-  posts      Post[]
-  activities Activity[]
+  messages          OutreachMessage[]
+  posts             Post[]
+  activities        Activity[]
+  followerSnapshots FollowerSnapshot[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([stage])
   @@index([primaryPlatform])
+}
+
+// Point-in-time follower counts, written on each refresh/edit so the
+// dashboard can show growth since the previous check.
+model FollowerSnapshot {
+  id                 String   @id @default(cuid())
+  creatorId          String
+  creator            Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  instagramFollowers Int?
+  xFollowers         Int?
+  tiktokFollowers    Int?
+  createdAt          DateTime @default(now())
+
+  @@index([creatorId, createdAt])
 }
 
 model Template {

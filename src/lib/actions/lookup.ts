@@ -1,6 +1,8 @@
 "use server";
 
 import Anthropic from "@anthropic-ai/sdk";
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/auth";
 
 const MODEL = "claude-opus-5";
@@ -143,4 +145,139 @@ Follower counts are integers (approximate is fine — round from '21.4M' style f
   } catch {
     return { ok: false, error: "Couldn't parse the lookup result — try again." };
   }
+}
+
+export type RefreshResult =
+  | { ok: true; changes: string[] }
+  | { ok: false; error: string };
+
+/**
+ * Re-check a creator's current follower counts on their known profiles via
+ * web search, update the stored counts, and record a snapshot so the
+ * dashboard can show growth over time.
+ */
+export async function refreshFollowers(creatorId: string): Promise<RefreshResult> {
+  const user = await requireUser();
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { ok: false, error: "Follower refresh needs ANTHROPIC_API_KEY set on the server." };
+  }
+
+  const creator = await prisma.creator.findUniqueOrThrow({ where: { id: creatorId } });
+  const profiles = [
+    creator.instagramHandle
+      ? `Instagram: https://instagram.com/${creator.instagramHandle.replace(/^@/, "")}`
+      : null,
+    creator.xHandle ? `X: https://x.com/${creator.xHandle.replace(/^@/, "")}` : null,
+    creator.tiktokHandle
+      ? `TikTok: https://www.tiktok.com/@${creator.tiktokHandle.replace(/^@/, "")}`
+      : null,
+  ].filter(Boolean);
+  if (profiles.length === 0) {
+    return { ok: false, error: "No social handles on file to refresh." };
+  }
+
+  const client = new Anthropic();
+  const system = `You look up CURRENT follower counts for specific, known social profiles. Use web search. Only report a count you can actually source for the EXACT profile given — never estimate from a different account and never reuse stale numbers you can't verify. Respond with ONLY a JSON object (no prose, no markdown fences): {"instagram": 21000000 | null, "x": 3400000 | null, "tiktok": 9000000 | null} — integers (round "21.4M"-style figures), null for any profile you couldn't verify or that wasn't asked about.`;
+
+  let messages: Anthropic.MessageParam[] = [
+    {
+      role: "user",
+      content: `Current follower counts for ${creator.name}'s profiles:\n${profiles.join("\n")}`,
+    },
+  ];
+  const request = (msgs: Anthropic.MessageParam[]) =>
+    client.messages.create({
+      model: MODEL,
+      max_tokens: 2048,
+      output_config: { effort: "low" },
+      system,
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 5 }],
+      messages: msgs,
+    });
+
+  let response: Anthropic.Message;
+  try {
+    response = await request(messages);
+    let continuations = 0;
+    while (response.stop_reason === "pause_turn" && continuations++ < 4) {
+      messages = [...messages, { role: "assistant", content: response.content }];
+      response = await request(messages);
+    }
+  } catch (e) {
+    console.error("[lookup] refreshFollowers failed", e);
+    if (e instanceof Anthropic.RateLimitError) {
+      return { ok: false, error: "Rate-limited — try again in a moment." };
+    }
+    if (e instanceof Anthropic.APIError) {
+      return { ok: false, error: `Refresh failed (${e.status ?? "network"}).` };
+    }
+    return { ok: false, error: "Refresh failed unexpectedly." };
+  }
+  if (response.stop_reason === "refusal") {
+    return { ok: false, error: "The refresh was declined — try again." };
+  }
+
+  const text = response.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("\n");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end <= start) {
+    return { ok: false, error: "Couldn't parse the refresh result — try again." };
+  }
+
+  let parsed: { instagram?: number | null; x?: number | null; tiktok?: number | null };
+  try {
+    parsed = JSON.parse(text.slice(start, end + 1));
+  } catch {
+    return { ok: false, error: "Couldn't parse the refresh result — try again." };
+  }
+
+  const norm = (v: unknown): number | null =>
+    typeof v === "number" && v > 0 ? Math.round(v) : null;
+  const next = {
+    instagram: creator.instagramHandle ? norm(parsed.instagram) : null,
+    x: creator.xHandle ? norm(parsed.x) : null,
+    tiktok: creator.tiktokHandle ? norm(parsed.tiktok) : null,
+  };
+  if (next.instagram == null && next.x == null && next.tiktok == null) {
+    return { ok: false, error: "Couldn't verify any counts this time — try again later." };
+  }
+
+  const fmt = (n: number) => n.toLocaleString("en-US");
+  const changes: string[] = [];
+  const diff = (label: string, oldV: number | null, newV: number | null) => {
+    if (newV == null) return;
+    if (oldV !== newV) changes.push(`${label} ${oldV != null ? fmt(oldV) : "—"} → ${fmt(newV)}`);
+  };
+  diff("IG", creator.instagramFollowers, next.instagram);
+  diff("X", creator.xFollowers, next.x);
+  diff("TikTok", creator.tiktokFollowers, next.tiktok);
+
+  // Only overwrite counts we actually verified; keep the old value otherwise.
+  const updated = {
+    instagramFollowers: next.instagram ?? creator.instagramFollowers,
+    xFollowers: next.x ?? creator.xFollowers,
+    tiktokFollowers: next.tiktok ?? creator.tiktokFollowers,
+  };
+  await prisma.creator.update({
+    where: { id: creatorId },
+    data: {
+      ...updated,
+      followersUpdatedAt: new Date(),
+      followerSnapshots: { create: { ...updated } },
+      activities: {
+        create: {
+          text: changes.length
+            ? `Follower counts refreshed: ${changes.join(", ")}`
+            : "Follower counts refreshed — no change",
+          userId: user.id,
+        },
+      },
+    },
+  });
+  revalidatePath("/");
+  revalidatePath(`/creators/${creatorId}`);
+  return { ok: true, changes };
 }

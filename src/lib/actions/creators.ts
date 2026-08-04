@@ -77,13 +77,28 @@ export async function createCreator(input: CreatorInput) {
     input.name.trim() ||
     (data.instagramHandle ?? data.xHandle ?? data.tiktokHandle ?? data.email ?? "").replace(/^@/, "");
 
+  const hasCounts =
+    data.instagramFollowers != null || data.xFollowers != null || data.tiktokFollowers != null;
   const creator = await prisma.creator.create({
     data: {
       name,
       ...data,
       primaryPlatform: primary,
+      followersUpdatedAt: hasCounts ? new Date() : null,
       ownerId: user.id,
       activities: { create: { text: "Creator added", userId: user.id } },
+      // Baseline snapshot so future refreshes can show growth.
+      ...(hasCounts
+        ? {
+            followerSnapshots: {
+              create: {
+                instagramFollowers: data.instagramFollowers,
+                xFollowers: data.xFollowers,
+                tiktokFollowers: data.tiktokFollowers,
+              },
+            },
+          }
+        : {}),
     },
   });
   revalidatePath("/");
@@ -96,12 +111,30 @@ export async function updateCreatorProfile(id: string, input: CreatorInput) {
   if (!primary) {
     return { ok: false as const, error: "Keep at least one contact channel (IG, X, TikTok, or email)." };
   }
+  const before = await prisma.creator.findUniqueOrThrow({ where: { id } });
+  const data = contactData(input);
+  const countsChanged =
+    before.instagramFollowers !== data.instagramFollowers ||
+    before.xFollowers !== data.xFollowers ||
+    before.tiktokFollowers !== data.tiktokFollowers;
   await prisma.creator.update({
     where: { id },
     data: {
       name: input.name.trim(),
-      ...contactData(input),
+      ...data,
       primaryPlatform: primary,
+      ...(countsChanged
+        ? {
+            followersUpdatedAt: new Date(),
+            followerSnapshots: {
+              create: {
+                instagramFollowers: data.instagramFollowers,
+                xFollowers: data.xFollowers,
+                tiktokFollowers: data.tiktokFollowers,
+              },
+            },
+          }
+        : {}),
     },
   });
   revalidateCreator(id);
