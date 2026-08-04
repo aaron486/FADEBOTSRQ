@@ -25,11 +25,13 @@ function followerSummary(c: {
   instagramFollowers: number | null;
   xFollowers: number | null;
   tiktokFollowers: number | null;
+  youtubeFollowers: number | null;
 }): string | null {
   const parts = [
     c.instagramFollowers != null ? `IG ~${c.instagramFollowers.toLocaleString("en-US")}` : null,
     c.xFollowers != null ? `X ~${c.xFollowers.toLocaleString("en-US")}` : null,
     c.tiktokFollowers != null ? `TikTok ~${c.tiktokFollowers.toLocaleString("en-US")}` : null,
+    c.youtubeFollowers != null ? `YouTube ~${c.youtubeFollowers.toLocaleString("en-US")} subscribers` : null,
   ].filter(Boolean);
   return parts.length ? `Followers: ${parts.join(", ")}` : null;
 }
@@ -68,6 +70,7 @@ export async function craftOutreach(creatorId: string, input: CraftInput): Promi
     instagramHandle: creator.instagramHandle,
     xHandle: creator.xHandle,
     tiktokHandle: creator.tiktokHandle,
+    youtubeHandle: creator.youtubeHandle,
     email: creator.email,
     phone: creator.phone,
     primaryPlatform: creator.primaryPlatform as Platform,

@@ -21,6 +21,7 @@ export type LookupResult =
       instagram: ProfileHit | null;
       x: ProfileHit | null;
       tiktok: ProfileHit | null;
+      youtube: ProfileHit | null;
       email: string | null;
       niche: string | null;
       note: string | null;
@@ -51,11 +52,12 @@ After searching, respond with ONLY a JSON object (no prose, no markdown fences) 
   "instagram": {"handle": "@handle", "followers": 21000000, "url": "https://instagram.com/..."} | null,
   "x": {"handle": "@handle", "followers": 3400000, "url": "https://x.com/..."} | null,
   "tiktok": {"handle": "@handle", "followers": 9000000, "url": "https://www.tiktok.com/@..."} | null,
+  "youtube": {"handle": "@channelhandle", "followers": 5000000, "url": "https://www.youtube.com/@..."} | null,
   "email": "publicly listed booking/business email" | null,
   "niche": "short description of their content niche" | null,
   "note": "one short caveat if anything is uncertain, else null"
 }
-Follower counts are integers (approximate is fine — round from '21.4M' style figures).`;
+For YouTube, "followers" means subscribers. Follower counts are integers (approximate is fine — round from '21.4M' style figures).`;
 
   let messages: Anthropic.MessageParam[] = [
     { role: "user", content: `Find the official social profiles for the creator: "${name}"` },
@@ -117,6 +119,7 @@ Follower counts are integers (approximate is fine — round from '21.4M' style f
       instagram?: { handle?: string; followers?: number | null; url?: string | null } | null;
       x?: { handle?: string; followers?: number | null; url?: string | null } | null;
       tiktok?: { handle?: string; followers?: number | null; url?: string | null } | null;
+      youtube?: { handle?: string; followers?: number | null; url?: string | null } | null;
       email?: string | null;
       niche?: string | null;
       note?: string | null;
@@ -133,11 +136,12 @@ Follower counts are integers (approximate is fine — round from '21.4M' style f
       ok: true,
       found:
         parsed.found !== false &&
-        !!(parsed.instagram?.handle || parsed.x?.handle || parsed.tiktok?.handle),
+        !!(parsed.instagram?.handle || parsed.x?.handle || parsed.tiktok?.handle || parsed.youtube?.handle),
       name: parsed.name?.trim() || name,
       instagram: clean(parsed.instagram),
       x: clean(parsed.x),
       tiktok: clean(parsed.tiktok),
+      youtube: clean(parsed.youtube),
       email: parsed.email?.trim() || null,
       niche: parsed.niche?.trim() || null,
       note: parsed.note?.trim() || null,
@@ -171,13 +175,16 @@ export async function refreshFollowers(creatorId: string): Promise<RefreshResult
     creator.tiktokHandle
       ? `TikTok: https://www.tiktok.com/@${creator.tiktokHandle.replace(/^@/, "")}`
       : null,
+    creator.youtubeHandle
+      ? `YouTube: https://www.youtube.com/@${creator.youtubeHandle.replace(/^@/, "")}`
+      : null,
   ].filter(Boolean);
   if (profiles.length === 0) {
     return { ok: false, error: "No social handles on file to refresh." };
   }
 
   const client = new Anthropic();
-  const system = `You look up CURRENT follower counts for specific, known social profiles. Use web search. Only report a count you can actually source for the EXACT profile given — never estimate from a different account and never reuse stale numbers you can't verify. Respond with ONLY a JSON object (no prose, no markdown fences): {"instagram": 21000000 | null, "x": 3400000 | null, "tiktok": 9000000 | null} — integers (round "21.4M"-style figures), null for any profile you couldn't verify or that wasn't asked about.`;
+  const system = `You look up CURRENT follower counts for specific, known social profiles. Use web search. Only report a count you can actually source for the EXACT profile given — never estimate from a different account and never reuse stale numbers you can't verify. Respond with ONLY a JSON object (no prose, no markdown fences): {"instagram": 21000000 | null, "x": 3400000 | null, "tiktok": 9000000 | null, "youtube": 5000000 | null} (youtube = subscribers) — integers (round "21.4M"-style figures), null for any profile you couldn't verify or that wasn't asked about.`;
 
   let messages: Anthropic.MessageParam[] = [
     {
@@ -227,7 +234,12 @@ export async function refreshFollowers(creatorId: string): Promise<RefreshResult
     return { ok: false, error: "Couldn't parse the refresh result — try again." };
   }
 
-  let parsed: { instagram?: number | null; x?: number | null; tiktok?: number | null };
+  let parsed: {
+    instagram?: number | null;
+    x?: number | null;
+    tiktok?: number | null;
+    youtube?: number | null;
+  };
   try {
     parsed = JSON.parse(text.slice(start, end + 1));
   } catch {
@@ -240,8 +252,9 @@ export async function refreshFollowers(creatorId: string): Promise<RefreshResult
     instagram: creator.instagramHandle ? norm(parsed.instagram) : null,
     x: creator.xHandle ? norm(parsed.x) : null,
     tiktok: creator.tiktokHandle ? norm(parsed.tiktok) : null,
+    youtube: creator.youtubeHandle ? norm(parsed.youtube) : null,
   };
-  if (next.instagram == null && next.x == null && next.tiktok == null) {
+  if (next.instagram == null && next.x == null && next.tiktok == null && next.youtube == null) {
     return { ok: false, error: "Couldn't verify any counts this time — try again later." };
   }
 
@@ -254,12 +267,14 @@ export async function refreshFollowers(creatorId: string): Promise<RefreshResult
   diff("IG", creator.instagramFollowers, next.instagram);
   diff("X", creator.xFollowers, next.x);
   diff("TikTok", creator.tiktokFollowers, next.tiktok);
+  diff("YouTube", creator.youtubeFollowers, next.youtube);
 
   // Only overwrite counts we actually verified; keep the old value otherwise.
   const updated = {
     instagramFollowers: next.instagram ?? creator.instagramFollowers,
     xFollowers: next.x ?? creator.xFollowers,
     tiktokFollowers: next.tiktok ?? creator.tiktokFollowers,
+    youtubeFollowers: next.youtube ?? creator.youtubeFollowers,
   };
   await prisma.creator.update({
     where: { id: creatorId },

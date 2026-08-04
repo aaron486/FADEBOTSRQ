@@ -6,17 +6,26 @@ import { stageMeta, totalFollowers, fmtNum, fmtCompact, fmtDate } from "@/lib/cr
 import { refreshFollowers } from "@/lib/actions/lookup";
 import type { CreatorRow } from "@/components/dashboard-view";
 
-type Col = "ig" | "tt" | "x" | "total";
+type Col = "ig" | "tt" | "x" | "yt" | "total";
 
 const COLS: { key: Col; label: string; value: (c: CreatorRow) => number | null }[] = [
   { key: "ig", label: "Instagram", value: (c) => c.instagramFollowers },
   { key: "tt", label: "TikTok", value: (c) => c.tiktokFollowers },
   { key: "x", label: "X", value: (c) => c.xFollowers },
+  { key: "yt", label: "YouTube", value: (c) => c.youtubeFollowers },
   { key: "total", label: "Total", value: (c) => totalFollowers(c) },
 ];
 
 const handleFor = (c: CreatorRow, col: Col) =>
-  col === "ig" ? c.instagramHandle : col === "tt" ? c.tiktokHandle : col === "x" ? c.xHandle : null;
+  col === "ig"
+    ? c.instagramHandle
+    : col === "tt"
+      ? c.tiktokHandle
+      : col === "x"
+        ? c.xHandle
+        : col === "yt"
+          ? c.youtubeHandle
+          : null;
 
 const deltaFor = (c: CreatorRow, col: Col): number | null => {
   switch (col) {
@@ -26,8 +35,10 @@ const deltaFor = (c: CreatorRow, col: Col): number | null => {
       return c.ttDelta;
     case "x":
       return c.xDelta;
+    case "yt":
+      return c.ytDelta;
     case "total": {
-      const parts = [c.igDelta, c.ttDelta, c.xDelta].filter((d): d is number => d != null);
+      const parts = [c.igDelta, c.ttDelta, c.xDelta, c.ytDelta].filter((d): d is number => d != null);
       return parts.length ? parts.reduce((s, d) => s + d, 0) : null;
     }
   }
@@ -72,7 +83,9 @@ export function FollowersTable({ rows, aiEnabled }: { rows: CreatorRow[]; aiEnab
     });
   }, [rows, sortCol, desc]);
 
-  const refreshable = sorted.filter((c) => c.instagramHandle || c.xHandle || c.tiktokHandle);
+  const refreshable = sorted.filter(
+    (c) => c.instagramHandle || c.xHandle || c.tiktokHandle || c.youtubeHandle
+  );
 
   async function refreshOne(id: string) {
     setBusyId(id);
@@ -111,6 +124,7 @@ export function FollowersTable({ rows, aiEnabled }: { rows: CreatorRow[]; aiEnab
     ig: rows.reduce((s, c) => s + (c.instagramFollowers ?? 0), 0),
     tt: rows.reduce((s, c) => s + (c.tiktokFollowers ?? 0), 0),
     x: rows.reduce((s, c) => s + (c.xFollowers ?? 0), 0),
+    yt: rows.reduce((s, c) => s + (c.youtubeFollowers ?? 0), 0),
   };
 
   return (
@@ -129,7 +143,7 @@ export function FollowersTable({ rows, aiEnabled }: { rows: CreatorRow[]; aiEnab
         </div>
       )}
       <div className="card overflow-x-auto">
-        <table className="w-full min-w-[800px] border-collapse text-sm">
+        <table className="w-full min-w-[900px] border-collapse text-sm">
           <thead>
             <tr className="text-left text-xs text-ink-3">
               <th className="px-3 py-2.5 font-semibold" style={{ borderBottom: "1px solid var(--grid)" }}>
@@ -198,7 +212,7 @@ export function FollowersTable({ rows, aiEnabled }: { rows: CreatorRow[]; aiEnab
                       style={{ borderBottom: "1px solid var(--grid)" }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {(c.instagramHandle || c.xHandle || c.tiktokHandle) && (
+                      {(c.instagramHandle || c.xHandle || c.tiktokHandle || c.youtubeHandle) && (
                         <button
                           className="btn btn-sm btn-ghost"
                           disabled={!!busyId || !!batch}
@@ -223,8 +237,9 @@ export function FollowersTable({ rows, aiEnabled }: { rows: CreatorRow[]; aiEnab
                 <td className="px-3 py-2.5 text-right tabular-nums" title={fmtNum(totals.ig)}>{fmtCompact(totals.ig || null)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums" title={fmtNum(totals.tt)}>{fmtCompact(totals.tt || null)}</td>
                 <td className="px-3 py-2.5 text-right tabular-nums" title={fmtNum(totals.x)}>{fmtCompact(totals.x || null)}</td>
-                <td className="px-3 py-2.5 text-right tabular-nums" title={fmtNum(totals.ig + totals.tt + totals.x)}>
-                  {fmtCompact(totals.ig + totals.tt + totals.x || null)}
+                <td className="px-3 py-2.5 text-right tabular-nums" title={fmtNum(totals.yt)}>{fmtCompact(totals.yt || null)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums" title={fmtNum(totals.ig + totals.tt + totals.x + totals.yt)}>
+                  {fmtCompact(totals.ig + totals.tt + totals.x + totals.yt || null)}
                 </td>
                 <td className="px-3 py-2.5"></td>
                 {aiEnabled && <td></td>}
@@ -232,7 +247,7 @@ export function FollowersTable({ rows, aiEnabled }: { rows: CreatorRow[]; aiEnab
             )}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={aiEnabled ? 7 : 6} className="px-3 py-8 text-center text-ink-3">
+                <td colSpan={aiEnabled ? 8 : 7} className="px-3 py-8 text-center text-ink-3">
                   No creators match the current filters.
                 </td>
               </tr>

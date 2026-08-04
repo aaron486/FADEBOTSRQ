@@ -25,7 +25,8 @@ export function Composer({
   hasSentBefore: boolean;
   aiEnabled: boolean;
 }) {
-  const channelOptions = channels(creator);
+  // YouTube has no DM surface — it stays a contact/stats channel only.
+  const channelOptions = channels(creator).filter((c) => c.platform !== "YOUTUBE");
   const defaultChannel =
     channelOptions.find((c) => c.platform === creator.primaryPlatform)?.platform ??
     channelOptions[0]?.platform ??

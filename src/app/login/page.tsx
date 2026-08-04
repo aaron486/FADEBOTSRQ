@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, loginRequired } from "@/auth";
 import { LoginForm } from "./login-form";
+import { FadeWordmark } from "@/components/logo";
 
 export default async function LoginPage() {
   if (!loginRequired) redirect("/");
@@ -18,7 +19,7 @@ export default async function LoginPage() {
     <main className="min-h-screen flex items-center justify-center p-6">
       <div className="card w-full max-w-sm p-8">
         <div className="mb-6 text-center">
-          <div className="text-2xl font-extrabold tracking-[0.14em]">FADE</div>
+          <FadeWordmark className="h-7 w-auto mx-auto mb-1" />
           <div className="text-sm text-ink-3">Creator Tracker</div>
         </div>
         <LoginForm

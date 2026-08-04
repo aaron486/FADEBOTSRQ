@@ -35,6 +35,7 @@ export type CreatorDetailData = {
   instagramHandle: string | null;
   xHandle: string | null;
   tiktokHandle: string | null;
+  youtubeHandle: string | null;
   email: string | null;
   phone: string | null;
   primaryPlatform: Platform;
@@ -43,6 +44,7 @@ export type CreatorDetailData = {
   instagramFollowers: number | null;
   xFollowers: number | null;
   tiktokFollowers: number | null;
+  youtubeFollowers: number | null;
   niche: string | null;
   notes: string | null;
   stage: Stage;
@@ -158,7 +160,7 @@ export function CreatorDetail({
           <ProfileSection
             // Remount when counts change server-side (e.g. after a refresh),
             // so the form picks up the new numbers.
-            key={`${creator.instagramFollowers}-${creator.xFollowers}-${creator.tiktokFollowers}`}
+            key={`${creator.instagramFollowers}-${creator.xFollowers}-${creator.tiktokFollowers}-${creator.youtubeFollowers}`}
             creator={creator}
             aiEnabled={aiEnabled}
           />
@@ -203,6 +205,7 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
     instagram: creator.instagramHandle ?? "",
     x: creator.xHandle ?? "",
     tiktok: creator.tiktokHandle ?? "",
+    youtube: creator.youtubeHandle ?? "",
     email: creator.email ?? "",
     phone: creator.phone ?? "",
     primary: creator.primaryPlatform,
@@ -211,6 +214,7 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
     igFollowers: creator.instagramFollowers?.toString() ?? "",
     xFollowers: creator.xFollowers?.toString() ?? "",
     ttFollowers: creator.tiktokFollowers?.toString() ?? "",
+    ytFollowers: creator.youtubeFollowers?.toString() ?? "",
     niche: creator.niche ?? "",
     notes: creator.notes ?? "",
   });
@@ -222,6 +226,7 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
     { key: "INSTAGRAM" as Platform, label: "Instagram", has: !!form.instagram.trim() },
     { key: "X" as Platform, label: "X", has: !!form.x.trim() },
     { key: "TIKTOK" as Platform, label: "TikTok", has: !!form.tiktok.trim() },
+    { key: "YOUTUBE" as Platform, label: "YouTube", has: !!form.youtube.trim() },
     { key: "EMAIL" as Platform, label: "Email", has: !!form.email.trim() },
   ].filter((c) => c.has);
 
@@ -233,6 +238,7 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
         instagramHandle: form.instagram || null,
         xHandle: form.x || null,
         tiktokHandle: form.tiktok || null,
+        youtubeHandle: form.youtube || null,
         email: form.email || null,
         phone: form.phone || null,
         primaryPlatform: form.primary,
@@ -241,6 +247,7 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
         instagramFollowers: form.igFollowers === "" ? null : Number(form.igFollowers),
         xFollowers: form.xFollowers === "" ? null : Number(form.xFollowers),
         tiktokFollowers: form.ttFollowers === "" ? null : Number(form.ttFollowers),
+        youtubeFollowers: form.ytFollowers === "" ? null : Number(form.ytFollowers),
         niche: form.niche || null,
         notes: form.notes || null,
       });
@@ -298,6 +305,13 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
           <div className="flex gap-2">
             <input className="input flex-1" placeholder="@handle" value={form.tiktok} onChange={(e) => setForm({ ...form, tiktok: e.target.value })} />
             <input className="input w-28" type="number" min={0} placeholder="followers" value={form.ttFollowers} onChange={(e) => setForm({ ...form, ttFollowers: e.target.value })} />
+          </div>
+        </div>
+        <div>
+          <label className="field-label">YouTube · subscribers</label>
+          <div className="flex gap-2">
+            <input className="input flex-1" placeholder="@channel" value={form.youtube} onChange={(e) => setForm({ ...form, youtube: e.target.value })} />
+            <input className="input w-28" type="number" min={0} placeholder="subs" value={form.ytFollowers} onChange={(e) => setForm({ ...form, ytFollowers: e.target.value })} />
           </div>
         </div>
         <div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth, signOut, loginRequired } from "@/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { FadeWordmark } from "@/components/logo";
 
 export default async function AppLayout({
   children,
@@ -17,7 +18,7 @@ export default async function AppLayout({
       >
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-baseline gap-2">
-            <span className="text-lg font-extrabold tracking-[0.14em]">FADE</span>
+            <FadeWordmark className="h-[15px] w-auto" />
             <span className="text-xs text-ink-3">Creator Tracker</span>
           </Link>
           <nav className="flex items-center gap-4 text-sm text-ink-2">
