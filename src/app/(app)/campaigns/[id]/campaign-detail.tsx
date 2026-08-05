@@ -90,12 +90,15 @@ type CampaignData = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+export type BriefRef = { creatorId: string; token: string };
+
 export function CampaignDetail({
   campaign,
   members,
   candidates,
   activities,
   contentItems,
+  briefs,
   driveConfigured,
 }: {
   campaign: CampaignData;
@@ -103,6 +106,7 @@ export function CampaignDetail({
   candidates: CandidateRow[];
   activities: ActivityRow[];
   contentItems: ContentRow[];
+  briefs: BriefRef[];
   driveConfigured: boolean;
 }) {
   const status = campaignStatusMeta(campaign.status);
@@ -182,7 +186,7 @@ export function CampaignDetail({
         <PipelineSection members={members} />
       </div>
 
-      <RosterSection campaignId={campaign.id} members={members} candidates={candidates} />
+      <RosterSection campaignId={campaign.id} members={members} candidates={candidates} briefs={briefs} />
 
       <ContentSection
         campaign={campaign}
@@ -330,14 +334,42 @@ function PipelineSection({ members }: { members: MemberRow[] }) {
 }
 
 /* ---- Roster ---- */
+function BriefCell({ campaignId, creatorId, token }: { campaignId: string; creatorId: string; token: string | null }) {
+  const [copied, setCopied] = useState(false);
+
+  function copy(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!token) return;
+    void navigator.clipboard.writeText(`${window.location.origin}/b/${token}`).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  return (
+    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      <Link href={`/campaigns/${campaignId}/briefs/${creatorId}`} className="btn btn-ghost btn-sm">
+        {token ? "Edit brief" : "+ Brief"}
+      </Link>
+      {token && (
+        <button className="btn btn-ghost btn-sm" title="Copy the creator's brief page link" onClick={copy}>
+          {copied ? "Copied!" : "🔗"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function RosterSection({
   campaignId,
   members,
   candidates,
+  briefs,
 }: {
   campaignId: string;
   members: MemberRow[];
   candidates: CandidateRow[];
+  briefs: BriefRef[];
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState("");
@@ -400,6 +432,7 @@ function RosterSection({
                 <th className="px-2 py-1.5 font-medium text-right">Views</th>
                 <th className="px-2 py-1.5 font-medium text-right">Agreed</th>
                 <th className="px-2 py-1.5 font-medium text-right">Paid</th>
+                <th className="px-2 py-1.5 font-medium">Brief</th>
                 <th className="px-2 py-1.5" />
               </tr>
             </thead>
@@ -407,6 +440,7 @@ function RosterSection({
               {members.map((m) => {
                 const primary = primaryChannel(m);
                 const stage = stageMeta(m.stage);
+                const brief = briefs.find((b) => b.creatorId === m.id);
                 return (
                   <tr
                     key={m.id}
@@ -442,6 +476,9 @@ function RosterSection({
                     </td>
                     <td className="px-2 py-2 text-right tabular-nums" style={cell}>
                       {fmtMoneyCents(m.paidCents)}
+                    </td>
+                    <td className="px-2 py-2" style={cell}>
+                      <BriefCell campaignId={campaignId} creatorId={m.id} token={brief?.token ?? null} />
                     </td>
                     <td className="px-2 py-2 text-right" style={cell}>
                       <button
