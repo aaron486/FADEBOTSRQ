@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { saveBrief, deleteBrief } from "@/lib/actions/briefs";
+import { saveBrief, deleteBrief, generateBrief } from "@/lib/actions/briefs";
 
 type BriefData = {
   token: string;
@@ -24,6 +24,7 @@ export function BriefEditor({
   creatorId,
   creatorName,
   hasUploadForm,
+  aiEnabled,
   brief,
   defaults,
 }: {
@@ -33,6 +34,7 @@ export function BriefEditor({
   creatorId: string;
   creatorName: string;
   hasUploadForm: boolean;
+  aiEnabled: boolean;
   brief: BriefData | null;
   defaults: Omit<BriefData, "token" | "updatedAt">;
 }) {
@@ -49,9 +51,30 @@ export function BriefEditor({
   );
   const [note, setNote] = useState("");
   const [copied, setCopied] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiNote, setAiNote] = useState("");
+  const [generating, setGenerating] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const briefUrl = brief ? `/b/${brief.token}` : null;
+
+  function generate() {
+    if (!aiPrompt.trim() || generating) return;
+    setAiNote("");
+    setGenerating(true);
+    startTransition(async () => {
+      const res = await generateBrief(campaignId, creatorId, aiPrompt);
+      setGenerating(false);
+      if (!res.ok) return setAiNote(res.error);
+      setHeadline(res.brief.headline || headline);
+      setIntro(res.brief.intro);
+      setDeliverables(res.brief.deliverables);
+      setTalkingPoints(res.brief.talkingPoints);
+      setDos(res.brief.dos);
+      setDonts(res.brief.donts);
+      setAiNote("Brief written — tweak anything below, then save to publish.");
+    });
+  }
 
   function save() {
     setNote("");
@@ -132,6 +155,43 @@ export function BriefEditor({
           Tip: link an upload form in the campaign&apos;s Content library and the brief page will include an
           &quot;Upload your content&quot; button automatically.
         </p>
+      )}
+
+      {aiEnabled && (
+        <section className="card p-4" style={{ borderColor: "var(--accent)" }}>
+          <div className="text-xs font-semibold uppercase tracking-wider text-ink-2 mb-2">
+            ✨ Write it for me
+          </div>
+          <p className="text-xs text-ink-3 mb-2">
+            Describe the ask in a few sentences — what you want {creatorName} to make, key angles, anything
+            specific — and the AI writes the whole brief using their niche and this campaign&apos;s details.
+          </p>
+          <textarea
+            className="input"
+            rows={3}
+            placeholder={`e.g. "Two TikToks during opening week. Focus on fading the public on big games — funny, not salesy. Must mention the $200 first-bet promo."`}
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+          />
+          <div className="flex items-center gap-3 mt-2">
+            <button className="btn btn-primary btn-sm" onClick={generate} disabled={generating || !aiPrompt.trim()}>
+              {generating ? "Writing brief…" : "✨ Generate full brief"}
+            </button>
+            {generating && (
+              <span className="text-xs" style={{ color: "var(--accent)" }}>
+                Writing {creatorName}&apos;s brief — a few seconds…
+              </span>
+            )}
+            {aiNote && !generating && (
+              <span
+                className="text-xs"
+                style={{ color: aiNote.startsWith("Brief written") ? "var(--good-text)" : "var(--critical)" }}
+              >
+                {aiNote}
+              </span>
+            )}
+          </div>
+        </section>
       )}
 
       <section className="card p-4 space-y-4">

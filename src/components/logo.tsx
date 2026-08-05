@@ -4,7 +4,7 @@
 export function FadeWordmark({ className, title = "FADE" }: { className?: string; title?: string }) {
   return (
     <svg
-      viewBox="0 0 318 100"
+      viewBox="-5 -4 328 108"
       className={className}
       role="img"
       aria-label={title}

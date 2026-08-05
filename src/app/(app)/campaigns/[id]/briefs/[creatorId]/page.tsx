@@ -48,6 +48,7 @@ export default async function BriefEditorPage({
       creatorId={creator.id}
       creatorName={creator.name}
       hasUploadForm={!!campaign.formUrl}
+      aiEnabled={!!process.env.ANTHROPIC_API_KEY}
       brief={
         brief
           ? {
