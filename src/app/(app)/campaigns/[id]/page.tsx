@@ -23,6 +23,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
           include: { creator: { select: { name: true } } },
           orderBy: { createdAt: "desc" },
         },
+        briefs: { select: { creatorId: true, token: true } },
       },
     }),
     prisma.creator.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -102,6 +103,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       candidates={candidates}
       activities={activities}
       contentItems={contentItems}
+      briefs={campaign.briefs}
       driveConfigured={!!process.env.GOOGLE_API_KEY}
     />
   );
