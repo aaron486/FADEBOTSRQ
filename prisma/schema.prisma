@@ -140,6 +140,7 @@ model Creator {
   activities        Activity[]
   followerSnapshots FollowerSnapshot[]
   campaigns         CampaignCreator[]
+  contentItems      ContentItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -178,9 +179,45 @@ model Campaign {
   startDate   DateTime?
   endDate     DateTime?
   notes       String?
+  // Content pipeline: creators upload via a Google Form into a Drive folder,
+  // and the app syncs that folder's files into ContentItem rows.
+  driveFolderUrl String?
+  driveFolderId  String?
+  formUrl        String?
   creators    CampaignCreator[]
+  contentItems ContentItem[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+}
+
+enum ContentStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  POSTED
+}
+
+// A piece of creator content attached to a campaign — synced from the
+// campaign's Drive folder or added by hand as a link.
+model ContentItem {
+  id              String        @id @default(cuid())
+  campaignId      String
+  campaign        Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creatorId       String?
+  creator         Creator?      @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  driveFileId     String?
+  name            String
+  mimeType        String?
+  url             String
+  thumbnailUrl    String?
+  status          ContentStatus @default(SUBMITTED)
+  notes           String?
+  driveModifiedAt DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([campaignId, driveFileId])
+  @@index([campaignId])
 }
 
 model CampaignCreator {

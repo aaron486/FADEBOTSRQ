@@ -37,6 +37,28 @@ export const CAMPAIGN_STATUSES: { key: CampaignStatus; label: string; colorVar: 
 export const campaignStatusMeta = (s: CampaignStatus) =>
   CAMPAIGN_STATUSES.find((x) => x.key === s) ?? CAMPAIGN_STATUSES[1];
 
+export type ContentStatus = "SUBMITTED" | "APPROVED" | "REJECTED" | "POSTED";
+
+export const CONTENT_STATUSES: { key: ContentStatus; label: string; colorVar: string }[] = [
+  { key: "SUBMITTED", label: "Submitted", colorVar: "var(--stage-2)" },
+  { key: "APPROVED", label: "Approved", colorVar: "var(--stage-4)" },
+  { key: "REJECTED", label: "Rejected", colorVar: "var(--stage-declined)" },
+  { key: "POSTED", label: "Posted", colorVar: "var(--stage-6)" },
+];
+
+export const contentStatusMeta = (s: ContentStatus) =>
+  CONTENT_STATUSES.find((x) => x.key === s) ?? CONTENT_STATUSES[0];
+
+/** Pull the folder id out of any Google Drive folder link. */
+export function parseDriveFolderId(input: string): string | null {
+  const text = input.trim();
+  if (!text) return null;
+  const m =
+    text.match(/drive\.google\.com\/(?:drive\/(?:u\/\d+\/)?)?folders\/([-\w]{10,})/) ??
+    text.match(/drive\.google\.com\/open\?id=([-\w]{10,})/);
+  return m ? m[1] : null;
+}
+
 export const CONTRACT_STATUSES: { key: ContractStatus; label: string }[] = [
   { key: "NONE", label: "None" },
   { key: "DRAFTING", label: "Drafting" },

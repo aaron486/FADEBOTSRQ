@@ -12,6 +12,7 @@ export async function GET() {
     seedAdminEmailSet: !!process.env.SEED_ADMIN_EMAIL,
     resendConfigured: !!process.env.RESEND_API_KEY,
     aiConfigured: !!process.env.ANTHROPIC_API_KEY,
+    driveConfigured: !!process.env.GOOGLE_API_KEY,
     databaseUrlSet: !!process.env.DATABASE_URL,
   };
   try {
