@@ -7,6 +7,8 @@ import { saveBrief, deleteBrief, generateBrief } from "@/lib/actions/briefs";
 type BriefData = {
   token: string;
   headline: string;
+  sourceUrl: string;
+  concept: string;
   intro: string;
   deliverables: string;
   talkingPoints: string;
@@ -40,6 +42,8 @@ export function BriefEditor({
 }) {
   const src = brief ?? defaults;
   const [headline, setHeadline] = useState(src.headline);
+  const [sourceUrl, setSourceUrl] = useState(src.sourceUrl);
+  const [concept, setConcept] = useState(src.concept);
   const [intro, setIntro] = useState(src.intro);
   const [deliverables, setDeliverables] = useState(src.deliverables);
   const [talkingPoints, setTalkingPoints] = useState(src.talkingPoints);
@@ -81,6 +85,8 @@ export function BriefEditor({
     startTransition(async () => {
       const res = await saveBrief(campaignId, creatorId, {
         headline,
+        sourceUrl,
+        concept,
         intro,
         deliverables,
         talkingPoints,
@@ -200,6 +206,12 @@ export function BriefEditor({
           <input id="b-headline" className="input" value={headline} onChange={(e) => setHeadline(e.target.value)} />
         </div>
         {field("b-intro", "Welcome note", intro, setIntro, 3)}
+        <div>
+          <label className="field-label" htmlFor="b-source">Source post link (shown on their page)</label>
+          <input id="b-source" className="input" placeholder="https://x.com/…  ·  instagram.com/…  ·  tiktok.com/…"
+            value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
+        </div>
+        {field("b-concept", "The concept (from the content studio, or write your own)", concept, setConcept, 8)}
         {field("b-deliverables", "Deliverables — one per line", deliverables, setDeliverables, 4, "Shows as a checklist on their page.")}
         {field("b-talking", "Talking points — one per line", talkingPoints, setTalkingPoints, 4)}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

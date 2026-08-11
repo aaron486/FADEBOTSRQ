@@ -63,17 +63,27 @@ export async function syncVaultByLink(url: string) {
 
   // One post = one piece: a loose file is a single-asset post, and a SUBFOLDER
   // (which can hold many files — slides, cuts, covers) is still just ONE piece
-  // whose asset link is the folder itself.
+  // whose asset link is the folder itself. A subfolder's cover image is its
+  // first file that has a Drive thumbnail.
+  const folderEntries = await Promise.all(
+    listed.folders.map(async (f) => {
+      const children = await listDriveFolder(f.id);
+      const cover = children.ok ? children.files.find((c) => c.thumbnailLink)?.thumbnailLink : null;
+      return {
+        id: f.id,
+        title: f.name,
+        url: `https://drive.google.com/drive/folders/${f.id}`,
+        thumbnailUrl: cover ?? null,
+      };
+    })
+  );
   const entries = [
-    ...listed.folders.map((f) => ({
-      id: f.id,
-      title: f.name,
-      url: `https://drive.google.com/drive/folders/${f.id}`,
-    })),
+    ...folderEntries,
     ...listed.files.map((f) => ({
       id: f.id,
       title: f.name.replace(/\.[a-z0-9]{2,5}$/i, ""),
       url: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
+      thumbnailUrl: f.thumbnailLink ?? null,
     })),
   ];
 
@@ -81,7 +91,11 @@ export async function syncVaultByLink(url: string) {
   for (const e of entries) {
     const existing = await prisma.contentPiece.findUnique({ where: { driveFileId: e.id } });
     if (existing) {
-      await prisma.contentPiece.update({ where: { id: existing.id }, data: { assetUrl: e.url } });
+      // Thumbnail links expire — refresh them on every sync.
+      await prisma.contentPiece.update({
+        where: { id: existing.id },
+        data: { assetUrl: e.url, thumbnailUrl: e.thumbnailUrl },
+      });
     } else {
       added += 1;
       await prisma.contentPiece.create({
@@ -90,6 +104,7 @@ export async function syncVaultByLink(url: string) {
           format: "OTHER",
           status: "IN_VAULT",
           assetUrl: e.url,
+          thumbnailUrl: e.thumbnailUrl,
           driveFileId: e.id,
         },
       });
@@ -154,6 +169,77 @@ export async function deletePiece(id: string) {
   await prisma.contentPiece.delete({ where: { id } });
   revalidatePath("/content");
   redirect("/content");
+}
+
+/* ---------- Assign to a creator in a campaign + create their brief ---------- */
+
+/**
+ * Puts a content idea into production: adds the creator to the campaign (if
+ * needed), tags the piece, and creates/updates the creator's shareable brief
+ * page seeded with the piece's title, description, concept, and source post.
+ */
+export async function assignPieceAndBrief(pieceId: string, campaignId: string, creatorId: string) {
+  const user = await requireUser();
+  const [piece, campaign, creator] = await Promise.all([
+    prisma.contentPiece.findUniqueOrThrow({ where: { id: pieceId } }),
+    prisma.campaign.findUniqueOrThrow({ where: { id: campaignId } }),
+    prisma.creator.findUniqueOrThrow({ where: { id: creatorId } }),
+  ]);
+
+  // Membership + piece tagging
+  const wasMember = !!(await prisma.campaignCreator.findUnique({
+    where: { campaignId_creatorId: { campaignId, creatorId } },
+  }));
+  if (!wasMember) {
+    await prisma.campaignCreator.create({ data: { campaignId, creatorId } });
+    await prisma.activity.create({
+      data: { creatorId, text: `Added to campaign: ${campaign.name}`, userId: user.id },
+    });
+  }
+  await prisma.contentPiece.update({
+    where: { id: pieceId },
+    data: {
+      campaignId,
+      creatorId,
+      status: piece.status === "NEEDED" ? "IN_PROGRESS" : piece.status,
+    },
+  });
+
+  // Brief: seed from the piece; keep any hand-edited fields on an existing brief.
+  const formatLabel = PIECE_FORMATS.find((f) => f.key === piece.format)?.label ?? "post";
+  const seeded = {
+    headline: `FADE × ${creator.name} — ${piece.title}`,
+    sourceUrl: piece.sourceUrl,
+    concept: piece.concept,
+    intro:
+      piece.angle ??
+      `Hey ${creator.name.split(" ")[0]} — we've got a ${formatLabel.toLowerCase()} for you. The full concept is below; make it yours.`,
+  };
+  const existing = await prisma.creatorBrief.findUnique({
+    where: { campaignId_creatorId: { campaignId, creatorId } },
+  });
+  const brief = existing
+    ? await prisma.creatorBrief.update({ where: { id: existing.id }, data: seeded })
+    : await prisma.creatorBrief.create({
+        data: {
+          campaignId,
+          creatorId,
+          ...seeded,
+          deliverables: `1× ${formatLabel} — full concept below`,
+          dueDate: campaign.endDate,
+          compensationCents: creator.agreedCostCents,
+        },
+      });
+  if (!existing) {
+    await prisma.activity.create({
+      data: { creatorId, text: `Creative brief created for campaign: ${campaign.name}`, userId: user.id },
+    });
+  }
+
+  revalidatePath("/content");
+  revalidatePath(`/content/${pieceId}`);
+  revalidatePath(`/campaigns/${campaignId}`);
+  return { ok: true as const, briefPath: `/b/${brief.token}`, editorPath: `/campaigns/${campaignId}/briefs/${creatorId}` };
 }
 
 /* ---------- AI concept generation ---------- */

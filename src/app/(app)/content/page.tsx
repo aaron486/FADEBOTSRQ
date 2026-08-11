@@ -21,6 +21,7 @@ export default async function ContentPage() {
     scheduledFor: p.scheduledFor ? p.scheduledFor.toISOString().slice(0, 10) : null,
     publishedUrl: p.publishedUrl,
     views: p.views,
+    thumbnailUrl: p.thumbnailUrl,
     updatedAt: p.updatedAt.toISOString(),
   }));
 

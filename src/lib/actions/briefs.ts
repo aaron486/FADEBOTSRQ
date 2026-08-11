@@ -9,6 +9,8 @@ import { PLATFORMS, Platform, channels, fmtDate, fmtMoneyCents } from "@/lib/cre
 
 export type BriefInput = {
   headline: string;
+  sourceUrl: string;
+  concept: string;
   intro: string;
   deliverables: string;
   talkingPoints: string;
@@ -24,6 +26,8 @@ export async function saveBrief(campaignId: string, creatorId: string, input: Br
   const user = await requireUser();
   const data = {
     headline: clean(input.headline),
+    sourceUrl: clean(input.sourceUrl),
+    concept: clean(input.concept),
     intro: clean(input.intro),
     deliverables: clean(input.deliverables),
     talkingPoints: clean(input.talkingPoints),

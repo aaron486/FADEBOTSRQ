@@ -28,8 +28,37 @@ export type PieceRow = {
   scheduledFor: string | null;
   publishedUrl: string | null;
   views: number | null;
+  thumbnailUrl: string | null;
   updatedAt: string;
 };
+
+/* Drive thumbnail with a fallback icon (thumb links expire between syncs). */
+function PieceThumb({ row }: { row: PieceRow }) {
+  const [failed, setFailed] = useState(false);
+  if (!row.thumbnailUrl || failed) {
+    const isFolder = row.assetUrl?.includes("/folders/");
+    return (
+      <div
+        className="w-16 h-10 rounded flex items-center justify-center text-base flex-none"
+        style={{ background: "var(--grid)" }}
+        title={row.assetUrl ? "Preview unavailable — re-sync the folder to refresh thumbnails" : undefined}
+      >
+        {row.assetUrl ? (isFolder ? "📁" : "🎬") : "💡"}
+      </div>
+    );
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={row.thumbnailUrl}
+      alt=""
+      width={64}
+      height={40}
+      className="w-16 h-10 rounded object-cover flex-none"
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 /* ---- Vault import: paste any Drive folder link, sync it in ---- */
 function VaultFolderBar({ driveConfigured }: { driveConfigured: boolean }) {
@@ -365,10 +394,15 @@ export function ContentBoard({
               {filtered.map((r) => (
                 <tr key={r.id} className="cursor-pointer hover:bg-accent/5" onClick={() => router.push(`/content/${r.id}`)}>
                   <td className="px-3 py-2.5" style={{ borderTop: "1px solid var(--grid)" }}>
-                    <div className="font-medium leading-tight">{r.title}</div>
-                    <div className="text-xs text-ink-3">
-                      {r.hasConcept ? "concept ready" : "no concept yet"}
-                      {r.tags ? ` · ${r.tags}` : ""}
+                    <div className="flex items-center gap-2.5">
+                      <PieceThumb row={r} />
+                      <div>
+                        <div className="font-medium leading-tight">{r.title}</div>
+                        <div className="text-xs text-ink-3">
+                          {r.hasConcept ? "concept ready" : "no concept yet"}
+                          {r.tags ? ` · ${r.tags}` : ""}
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-xs" style={{ borderTop: "1px solid var(--grid)" }}>

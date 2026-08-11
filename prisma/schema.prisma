@@ -142,6 +142,7 @@ model Creator {
   campaigns         CampaignCreator[]
   contentItems      ContentItem[]
   briefs            CreatorBrief[]
+  pieces            ContentPiece[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -188,6 +189,7 @@ model Campaign {
   creators    CampaignCreator[]
   contentItems ContentItem[]
   briefs      CreatorBrief[]
+  pieces      ContentPiece[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 }
@@ -202,6 +204,8 @@ model CreatorBrief {
   creator           Creator  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   token             String   @unique @default(cuid())
   headline          String?
+  sourceUrl         String?
+  concept           String?
   intro             String?
   deliverables      String?
   talkingPoints     String?
@@ -293,7 +297,12 @@ model ContentPiece {
   angle          String?
   concept        String?
   assetUrl       String?
+  thumbnailUrl   String?
   driveFileId    String?     @unique
+  campaignId     String?
+  campaign       Campaign?   @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  creatorId      String?
+  creator        Creator?    @relation(fields: [creatorId], references: [id], onDelete: SetNull)
   scheduledFor   DateTime?
   publishedUrl   String?
   views          Int?
