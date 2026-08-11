@@ -73,7 +73,7 @@ export function parseDriveFolderId(input: string): string | null {
 /* ---- Marketing content studio ---- */
 
 export type PieceFormat = "REACTION_VIDEO" | "PHOTO_SLIDESHOW" | "FADE_STORY" | "OTHER";
-export type PieceStatus = "NEEDED" | "IN_PROGRESS" | "IN_VAULT" | "QUEUED" | "PUBLISHED";
+export type PieceStatus = "NEEDS_APPROVAL" | "NEEDED" | "IN_PROGRESS" | "IN_VAULT" | "QUEUED" | "PUBLISHED";
 
 export const PIECE_FORMATS: { key: PieceFormat; label: string }[] = [
   { key: "REACTION_VIDEO", label: "Reaction video" },
@@ -85,12 +85,13 @@ export const PIECE_FORMATS: { key: PieceFormat; label: string }[] = [
 export const pieceFormatMeta = (f: PieceFormat) =>
   PIECE_FORMATS.find((x) => x.key === f) ?? PIECE_FORMATS[3];
 
-export const PIECE_STATUSES: { key: PieceStatus; label: string; colorVar: string }[] = [
-  { key: "NEEDED", label: "Needed", colorVar: "var(--stage-1)" },
-  { key: "IN_PROGRESS", label: "In progress", colorVar: "var(--stage-3)" },
-  { key: "IN_VAULT", label: "In vault", colorVar: "var(--stage-4)" },
-  { key: "QUEUED", label: "Queued", colorVar: "var(--stage-5)" },
-  { key: "PUBLISHED", label: "Published", colorVar: "var(--stage-6)" },
+export const PIECE_STATUSES: { key: PieceStatus; label: string; caption: string; colorVar: string }[] = [
+  { key: "NEEDS_APPROVAL", label: "Needs approval", caption: "ideas to green-light", colorVar: "var(--stage-1)" },
+  { key: "NEEDED", label: "Need content", caption: "approved — film it", colorVar: "var(--stage-2)" },
+  { key: "IN_PROGRESS", label: "In progress", caption: "being made", colorVar: "var(--stage-3)" },
+  { key: "IN_VAULT", label: "In vault", caption: "ready to publish", colorVar: "var(--stage-4)" },
+  { key: "QUEUED", label: "Queued", caption: "scheduled", colorVar: "var(--stage-5)" },
+  { key: "PUBLISHED", label: "Published", caption: "live", colorVar: "var(--stage-6)" },
 ];
 
 export const pieceStatusMeta = (s: PieceStatus) =>

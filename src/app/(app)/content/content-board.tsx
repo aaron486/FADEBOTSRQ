@@ -227,6 +227,7 @@ export function ContentBoard({
               <span className="dot" style={{ background: s.colorVar }} />
               {s.label}
             </div>
+            <div className="text-[11px] text-ink-3">{s.caption}</div>
           </button>
         ))}
       </section>

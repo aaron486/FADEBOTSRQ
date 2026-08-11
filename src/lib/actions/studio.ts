@@ -140,7 +140,7 @@ export async function createPiece(input: {
       title,
       format: input.format,
       // Content that already exists lands straight in the vault.
-      status: input.status ?? (assetUrl ? "IN_VAULT" : "NEEDED"),
+      status: input.status ?? (assetUrl ? "IN_VAULT" : "NEEDS_APPROVAL"),
       theme: clean(input.theme),
       sourceUrl: clean(input.sourceUrl),
       angle: clean(input.angle),
@@ -207,7 +207,7 @@ export async function assignPieceAndBrief(pieceId: string, campaignId: string, c
     data: {
       campaignId,
       creatorId,
-      status: piece.status === "NEEDED" ? "IN_PROGRESS" : piece.status,
+      status: ["NEEDS_APPROVAL", "NEEDED"].includes(piece.status) ? "IN_PROGRESS" : piece.status,
     },
   });
 

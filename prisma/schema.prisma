@@ -277,6 +277,7 @@ enum PieceFormat {
 }
 
 enum PieceStatus {
+  NEEDS_APPROVAL
   NEEDED
   IN_PROGRESS
   IN_VAULT
