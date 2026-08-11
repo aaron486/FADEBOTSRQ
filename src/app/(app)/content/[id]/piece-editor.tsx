@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   PieceFormat,
   PieceStatus,
@@ -150,6 +151,7 @@ export function PieceEditor({
   const [note, setNote] = useState("");
   const [generating, setGenerating] = useState(false);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   const statusMeta = pieceStatusMeta(status);
 
@@ -173,7 +175,12 @@ export function PieceEditor({
         thumbnailUrl: toThumbUrl(thumb),
         notes: notes || null,
       });
-      setNote(res.ok ? "Saved." : res.error);
+      if (res.ok) {
+        // Saving is "done here" — land back on the studio board.
+        router.push("/content");
+        return;
+      }
+      setNote(res.error);
     });
   }
 
