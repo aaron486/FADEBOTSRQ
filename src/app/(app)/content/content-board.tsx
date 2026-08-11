@@ -12,7 +12,7 @@ import {
   fmtDate,
   fmtCompact,
 } from "@/lib/creator-meta";
-import { createPiece, generateConcept, setPieceStatus, setVaultFolder, syncVaultFolder } from "@/lib/actions/studio";
+import { createPiece, generateConcept, setPieceStatus, syncVaultByLink } from "@/lib/actions/studio";
 
 export type PieceRow = {
   id: string;
@@ -31,104 +31,62 @@ export type PieceRow = {
   updatedAt: string;
 };
 
-/* ---- Vault Drive folder: link once, sync files in as In-vault pieces ---- */
-function VaultFolderBar({
-  vaultFolderUrl,
-  driveConfigured,
-}: {
-  vaultFolderUrl: string | null;
-  driveConfigured: boolean;
-}) {
-  const [editing, setEditing] = useState(!vaultFolderUrl);
-  const [draft, setDraft] = useState(vaultFolderUrl ?? "");
+/* ---- Vault import: paste any Drive folder link, sync it in ---- */
+function VaultFolderBar({ driveConfigured }: { driveConfigured: boolean }) {
+  const [link, setLink] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [, startTransition] = useTransition();
 
-  // Render-time resync when the saved folder changes server-side.
-  const [lastUrl, setLastUrl] = useState(vaultFolderUrl);
-  if (vaultFolderUrl !== lastUrl) {
-    setLastUrl(vaultFolderUrl);
-    setDraft(vaultFolderUrl ?? "");
-    setEditing(!vaultFolderUrl);
-  }
-
-  function save() {
+  function sync() {
+    if (!link.trim() || busy) return;
     setNote("");
     setBusy(true);
     startTransition(async () => {
-      const res = await setVaultFolder(draft);
+      const res = await syncVaultByLink(link);
       setBusy(false);
       if (!res.ok) return setNote(res.error);
-      setEditing(false);
-      setNote(draft.trim() ? "Folder linked." : "Folder removed.");
-    });
-  }
-
-  function sync() {
-    setNote("");
-    setBusy(true);
-    startTransition(async () => {
-      const res = await syncVaultFolder();
-      setBusy(false);
+      setLink("");
       setNote(
-        res.ok
-          ? `Synced — ${res.total} file${res.total === 1 ? "" : "s"} in the folder, ${res.added} new piece${res.added === 1 ? "" : "s"} added to the vault.`
-          : res.error
+        `Synced — ${res.total} item${res.total === 1 ? "" : "s"} in the folder, ${res.added} new piece${res.added === 1 ? "" : "s"} added to the vault.`
       );
     });
   }
 
-  const isError = note && !/linked|removed|Synced/.test(note);
+  const isError = note && !note.startsWith("Synced");
 
   return (
-    <section className="card p-4 mb-4">
+    <div>
       <div className="flex flex-wrap items-center gap-2">
-        <div className="text-xs font-semibold uppercase tracking-wider text-ink-2 mr-auto">
-          Vault Drive folder
+        <div className="text-xs font-semibold uppercase tracking-wider text-ink-2">
+          Bulk import a vault folder
         </div>
-        {editing ? (
-          <>
-            <input
-              className="input flex-1 min-w-[260px]"
-              placeholder="https://drive.google.com/drive/folders/… — where your finished content lives"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              aria-label="Vault Drive folder link"
-            />
-            <button className="btn btn-primary btn-sm" onClick={save} disabled={busy}>
-              Save
-            </button>
-            {vaultFolderUrl && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>Cancel</button>
-            )}
-          </>
-        ) : (
-          <>
-            <a href={vaultFolderUrl!} target="_blank" rel="noreferrer" className="btn btn-sm">
-              Open folder ↗
-            </a>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={sync}
-              disabled={busy || !driveConfigured}
-              title={driveConfigured ? "Pull the folder's files in as In-vault pieces" : "Add GOOGLE_API_KEY in Vercel to enable sync"}
-            >
-              {busy ? "Syncing…" : "⇅ Sync vault"}
-            </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>Edit</button>
-          </>
-        )}
+        <input
+          className="input flex-1 min-w-[260px]"
+          placeholder="https://drive.google.com/drive/folders/… — paste any vault folder"
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          aria-label="Vault folder link"
+        />
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={sync}
+          disabled={busy || !driveConfigured || !link.trim()}
+          title={driveConfigured ? "Pull this folder's contents in as In-vault pieces" : "Add GOOGLE_API_KEY in Vercel to enable sync"}
+        >
+          {busy ? "Syncing…" : "⇅ Sync folder"}
+        </button>
       </div>
       <p className="text-xs text-ink-3 mt-2">
-        Every file in this folder becomes an <b>In vault</b> piece here (deduped by file, titles from
-        filenames) — drop finished content in Drive, hit sync, and it&apos;s tracked.
+        Works with as many vault folders as you have — every loose file, and every <b>subfolder</b> (one
+        post&apos;s worth of content), becomes an <b>In vault</b> piece. Deduped, so re-syncing a folder never
+        duplicates.
         {!driveConfigured && " Sync needs the GOOGLE_API_KEY env var in Vercel."}
       </p>
       {note && (
         <p className="text-xs mt-1" style={{ color: isError ? "var(--critical)" : "var(--good-text)" }}>{note}</p>
       )}
-    </section>
+    </div>
   );
 }
 
@@ -136,12 +94,10 @@ export function ContentBoard({
   rows: initial,
   aiEnabled,
   driveConfigured,
-  vaultFolderUrl,
 }: {
   rows: PieceRow[];
   aiEnabled: boolean;
   driveConfigured: boolean;
-  vaultFolderUrl: string | null;
 }) {
   const router = useRouter();
   const [rows, setRows] = useState(initial);
@@ -154,7 +110,8 @@ export function ContentBoard({
     setRows(initial);
   }
 
-  /* ---- New concept form ---- */
+  /* ---- Add-a-campaign form (existing content, or imagine a new one) ---- */
+  const [mode, setMode] = useState<"existing" | "new">("new");
   const [title, setTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [assetUrl, setAssetUrl] = useState("");
@@ -254,34 +211,63 @@ export function ContentBoard({
         ))}
       </section>
 
-      <VaultFolderBar vaultFolderUrl={vaultFolderUrl} driveConfigured={driveConfigured} />
-
-      {/* New concept */}
+      {/* Add a campaign — existing content, or imagine a new one */}
       <section className="card p-4 mb-4">
-        <div className="text-xs font-semibold uppercase tracking-wider text-ink-2 mb-2">New concept</div>
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <div className="text-xs font-semibold uppercase tracking-wider text-ink-2 mr-auto">Add a campaign</div>
+          <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid var(--edge)" }}>
+            {(
+              [
+                { key: "new", label: "✨ Imagine a new one" },
+                { key: "existing", label: "I have the content" },
+              ] as const
+            ).map((m) => (
+              <button
+                key={m.key}
+                onClick={() => setMode(m.key)}
+                className="px-3 py-1.5 text-[13px] cursor-pointer"
+                style={
+                  mode === m.key
+                    ? { background: "var(--accent)", color: "var(--accent-ink)", fontWeight: 600 }
+                    : { background: "transparent", color: "var(--text-secondary)" }
+                }
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
           <div>
             <label className="field-label" htmlFor="c-title">Campaign title</label>
             <input id="c-title" className="input" placeholder={`e.g. "Chiefs trap game week"`}
               value={title} onChange={(e) => setTitle(e.target.value)} />
-            <p className="text-[11px] text-ink-3 mt-1">Leave blank and ✨ will name it for you.</p>
+            {mode === "new" && <p className="text-[11px] text-ink-3 mt-1">Leave blank and ✨ will name it for you.</p>}
           </div>
-          <div>
-            <label className="field-label" htmlFor="src">Source post link (X, Instagram, TikTok)</label>
-            <input id="src" className="input" placeholder="https://x.com/…  ·  instagram.com/reel/…  ·  tiktok.com/@…/video/…"
-              value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
-            {platform && <p className="text-[11px] text-ink-3 mt-1">Detected: {platform === "X" ? "X" : platform.charAt(0) + platform.slice(1).toLowerCase()}</p>}
-          </div>
-          <div>
-            <label className="field-label" htmlFor="c-asset">Content link (Google Drive — file or folder)</label>
-            <input id="c-asset" className="input" placeholder="drive.google.com/… — a folder with several files still counts as one post"
-              value={assetUrl} onChange={(e) => setAssetUrl(e.target.value)} />
-            {assetUrl.trim() && <p className="text-[11px] text-ink-3 mt-1">Has content already → lands In vault.</p>}
-          </div>
-          <div>
+          {mode === "existing" ? (
+            <div>
+              <label className="field-label" htmlFor="c-asset">Content link (Google Drive — file or folder)</label>
+              <input id="c-asset" className="input" placeholder="drive.google.com/… — a folder with several files still counts as one post"
+                value={assetUrl} onChange={(e) => setAssetUrl(e.target.value)} />
+              {assetUrl.trim() && <p className="text-[11px] text-ink-3 mt-1">Lands In vault, ready to queue.</p>}
+            </div>
+          ) : (
+            <div>
+              <label className="field-label" htmlFor="src">Source post link (X, Instagram, TikTok)</label>
+              <input id="src" className="input" placeholder="https://x.com/…  ·  instagram.com/reel/…  ·  tiktok.com/@…/video/…"
+                value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
+              {platform && <p className="text-[11px] text-ink-3 mt-1">Detected: {platform === "X" ? "X" : platform.charAt(0) + platform.slice(1).toLowerCase()}</p>}
+            </div>
+          )}
+          <div className="sm:col-span-2">
             <label className="field-label" htmlFor="angle">Description — what&apos;s this about, and what&apos;s the play?</label>
             <textarea id="angle" className="input" rows={2}
-              placeholder={`e.g. "Schefter post has everyone on the Chiefs — classic public trap game, we fade it"`}
+              placeholder={
+                mode === "existing"
+                  ? `e.g. "Five slides from the rivalry week shoot — one post"`
+                  : `e.g. "Schefter post has everyone on the Chiefs — classic public trap game, we fade it"`
+              }
               value={angle} onChange={(e) => setAngle(e.target.value)} />
           </div>
         </div>
@@ -297,18 +283,30 @@ export function ContentBoard({
               <option key={t} value={t} />
             ))}
           </datalist>
-          {aiEnabled && (
-            <button className="btn btn-primary" onClick={() => addPiece(true)} disabled={busy !== "idle" || (!sourceUrl.trim() && !angle.trim())}>
-              {busy === "generating" ? "Writing concept…" : "✨ Generate concept"}
+          {mode === "existing" ? (
+            <button
+              className="btn btn-primary"
+              onClick={() => addPiece(false)}
+              disabled={busy !== "idle" || (!title.trim() && !assetUrl.trim())}
+            >
+              {busy === "adding" ? "Adding…" : "+ Add to vault"}
             </button>
+          ) : (
+            <>
+              {aiEnabled && (
+                <button className="btn btn-primary" onClick={() => addPiece(true)} disabled={busy !== "idle" || (!sourceUrl.trim() && !angle.trim())}>
+                  {busy === "generating" ? "Writing concept…" : "✨ Generate concept"}
+                </button>
+              )}
+              <button
+                className="btn"
+                onClick={() => addPiece(false)}
+                disabled={busy !== "idle" || (!title.trim() && !sourceUrl.trim() && !angle.trim())}
+              >
+                + Add without AI
+              </button>
+            </>
           )}
-          <button
-            className="btn"
-            onClick={() => addPiece(false)}
-            disabled={busy !== "idle" || (!title.trim() && !sourceUrl.trim() && !assetUrl.trim() && !angle.trim())}
-          >
-            + Add without AI
-          </button>
           {note && <span className="text-xs" style={{ color: "var(--critical)" }}>{note}</span>}
           {busy === "generating" && (
             <span className="text-xs" style={{ color: "var(--accent)" }}>
@@ -316,6 +314,12 @@ export function ContentBoard({
             </span>
           )}
         </div>
+
+        {mode === "existing" && (
+          <div className="mt-4 pt-3" style={{ borderTop: "1px solid var(--grid)" }}>
+            <VaultFolderBar driveConfigured={driveConfigured} />
+          </div>
+        )}
       </section>
 
       {/* Filters */}
