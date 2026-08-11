@@ -49,6 +49,17 @@ export const CONTENT_STATUSES: { key: ContentStatus; label: string; colorVar: st
 export const contentStatusMeta = (s: ContentStatus) =>
   CONTENT_STATUSES.find((x) => x.key === s) ?? CONTENT_STATUSES[0];
 
+/** Stable public thumbnail for a Drive file id ("anyone with link" files). */
+export const driveThumb = (fileId: string) => `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+
+/** Normalize a pasted image source: Drive file links become thumbnail URLs. */
+export function toThumbUrl(input: string): string | null {
+  const t = input.trim();
+  if (!t) return null;
+  const m = t.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=)([-\w]{10,})/);
+  return m ? driveThumb(m[1]) : t;
+}
+
 /** Pull the folder id out of any Google Drive folder link. */
 export function parseDriveFolderId(input: string): string | null {
   const text = input.trim();

@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/auth";
-import { PieceFormat, PieceStatus, PIECE_FORMATS, detectPostPlatform, parseDriveFolderId } from "@/lib/creator-meta";
+import { PieceFormat, PieceStatus, PIECE_FORMATS, detectPostPlatform, parseDriveFolderId, driveThumb } from "@/lib/creator-meta";
 import { listDriveFolder } from "@/lib/drive";
 
 const clean = (v: string | null | undefined) => v?.trim() || null;
@@ -22,6 +22,7 @@ export type PieceInput = {
   assetUrl: string | null;
   scheduledFor: string | null; // yyyy-mm-dd
   publishedUrl: string | null;
+  thumbnailUrl: string | null;
   views: number | null;
   likes: number | null;
   notes: string | null;
@@ -39,6 +40,7 @@ function pieceData(input: PieceInput) {
     assetUrl: clean(input.assetUrl),
     scheduledFor: input.scheduledFor ? new Date(`${input.scheduledFor}T00:00:00Z`) : null,
     publishedUrl: clean(input.publishedUrl),
+    thumbnailUrl: clean(input.thumbnailUrl),
     views: input.views,
     likes: input.likes,
     notes: clean(input.notes),
@@ -68,12 +70,16 @@ export async function syncVaultByLink(url: string) {
   const folderEntries = await Promise.all(
     listed.folders.map(async (f) => {
       const children = await listDriveFolder(f.id);
-      const cover = children.ok ? children.files.find((c) => c.thumbnailLink)?.thumbnailLink : null;
+      // Prefer an image/video child as the cover; the public thumbnail
+      // endpoint renders in browsers where thumbnailLink often won't.
+      const cover = children.ok
+        ? (children.files.find((c) => /^(image|video)\//.test(c.mimeType)) ?? children.files[0])
+        : null;
       return {
         id: f.id,
         title: f.name,
         url: `https://drive.google.com/drive/folders/${f.id}`,
-        thumbnailUrl: cover ?? null,
+        thumbnailUrl: cover ? driveThumb(cover.id) : null,
       };
     })
   );
@@ -83,7 +89,7 @@ export async function syncVaultByLink(url: string) {
       id: f.id,
       title: f.name.replace(/\.[a-z0-9]{2,5}$/i, ""),
       url: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
-      thumbnailUrl: f.thumbnailLink ?? null,
+      thumbnailUrl: driveThumb(f.id),
     })),
   ];
 

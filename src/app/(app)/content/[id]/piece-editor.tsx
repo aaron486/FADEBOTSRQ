@@ -8,6 +8,7 @@ import {
   PIECE_FORMATS,
   PIECE_STATUSES,
   pieceStatusMeta,
+  toThumbUrl,
 } from "@/lib/creator-meta";
 import { updatePiece, deletePiece, generateConcept, assignPieceAndBrief } from "@/lib/actions/studio";
 
@@ -144,6 +145,7 @@ export function PieceEditor({
   const [publishedUrl, setPublishedUrl] = useState(piece.publishedUrl);
   const [views, setViews] = useState(piece.views != null ? String(piece.views) : "");
   const [likes, setLikes] = useState(piece.likes != null ? String(piece.likes) : "");
+  const [thumb, setThumb] = useState(piece.thumbnailUrl ?? "");
   const [notes, setNotes] = useState(piece.notes);
   const [note, setNote] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -168,6 +170,7 @@ export function PieceEditor({
         publishedUrl: publishedUrl || null,
         views: views.trim() === "" ? null : Number(views),
         likes: likes.trim() === "" ? null : Number(likes),
+        thumbnailUrl: toThumbUrl(thumb),
         notes: notes || null,
       });
       setNote(res.ok ? "Saved." : res.error);
@@ -311,6 +314,23 @@ export function PieceEditor({
             <label className="field-label" htmlFor="p-likes">Likes</label>
             <input id="p-likes" className="input" type="number" min={0} placeholder="from the live post" value={likes} onChange={(e) => setLikes(e.target.value)} />
           </div>
+        </div>
+
+        <div>
+          <label className="field-label" htmlFor="p-thumb">Thumbnail image</label>
+          <div className="flex gap-2 items-center">
+            {toThumbUrl(thumb) && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={toThumbUrl(thumb)!} alt="" className="h-10 w-16 rounded object-cover flex-none"
+                onError={(e) => { e.currentTarget.style.opacity = "0.25"; }} />
+            )}
+            <input id="p-thumb" className="input flex-1"
+              placeholder="Paste an image link, or a Drive file link — right-click a file in Drive → Copy link"
+              value={thumb} onChange={(e) => setThumb(e.target.value)} />
+          </div>
+          <p className="text-[11px] text-ink-3 mt-1">
+            Drive file links become previews automatically (the file needs &quot;Anyone with the link&quot; sharing). Save to apply.
+          </p>
         </div>
 
         <div>
