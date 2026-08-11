@@ -76,27 +76,42 @@ export async function syncVaultFolder() {
   const listed = await listDriveFolder(setting.value);
   if (!listed.ok) return { ok: false as const, error: listed.error };
 
+  // One post = one piece: a loose file is a single-asset post, and a SUBFOLDER
+  // (which can hold many files — slides, cuts, covers) is still just ONE piece
+  // whose asset link is the folder itself.
+  const entries = [
+    ...listed.folders.map((f) => ({
+      id: f.id,
+      title: f.name,
+      url: `https://drive.google.com/drive/folders/${f.id}`,
+    })),
+    ...listed.files.map((f) => ({
+      id: f.id,
+      title: f.name.replace(/\.[a-z0-9]{2,5}$/i, ""),
+      url: f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`,
+    })),
+  ];
+
   let added = 0;
-  for (const f of listed.files) {
-    const url = f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`;
-    const existing = await prisma.contentPiece.findUnique({ where: { driveFileId: f.id } });
+  for (const e of entries) {
+    const existing = await prisma.contentPiece.findUnique({ where: { driveFileId: e.id } });
     if (existing) {
-      await prisma.contentPiece.update({ where: { id: existing.id }, data: { assetUrl: url } });
+      await prisma.contentPiece.update({ where: { id: existing.id }, data: { assetUrl: e.url } });
     } else {
       added += 1;
       await prisma.contentPiece.create({
         data: {
-          title: f.name.replace(/\.[a-z0-9]{2,5}$/i, ""),
+          title: e.title,
           format: "OTHER",
           status: "IN_VAULT",
-          assetUrl: url,
-          driveFileId: f.id,
+          assetUrl: e.url,
+          driveFileId: e.id,
         },
       });
     }
   }
   revalidatePath("/content");
-  return { ok: true as const, added, total: listed.files.length };
+  return { ok: true as const, added, total: entries.length };
 }
 
 /** Quick-add from the board: link + angle + format (+ optional generated concept). */
@@ -107,20 +122,24 @@ export async function createPiece(input: {
   sourceUrl: string | null;
   angle: string | null;
   concept: string | null;
+  assetUrl?: string | null;
   status?: PieceStatus;
 }) {
   await requireUser();
   const title = input.title.trim();
   if (!title) return { ok: false as const, error: "Give the piece a title." };
+  const assetUrl = clean(input.assetUrl);
   const piece = await prisma.contentPiece.create({
     data: {
       title,
       format: input.format,
-      status: input.status ?? "NEEDED",
+      // Content that already exists lands straight in the vault.
+      status: input.status ?? (assetUrl ? "IN_VAULT" : "NEEDED"),
       theme: clean(input.theme),
       sourceUrl: clean(input.sourceUrl),
       angle: clean(input.angle),
       concept: clean(input.concept),
+      assetUrl,
     },
   });
   revalidatePath("/content");

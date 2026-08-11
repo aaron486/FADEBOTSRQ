@@ -12,7 +12,7 @@ export type DriveFile = {
 };
 
 export type DriveListResult =
-  | { ok: true; files: DriveFile[] }
+  | { ok: true; files: DriveFile[]; folders: DriveFile[] }
   | { ok: false; error: string };
 
 /** Turn a Drive API error response into a plain-language fix. */
@@ -57,7 +57,7 @@ async function driveErrorMessage(res: Response): Promise<string> {
     : `Google Drive error (HTTP ${res.status}) — try again in a minute.`;
 }
 
-/** List a Drive folder's files (excluding subfolders), following pagination. */
+/** List a Drive folder's direct children (files and subfolders), following pagination. */
 export async function listDriveFolder(folderId: string): Promise<DriveListResult> {
   if (!process.env.GOOGLE_API_KEY) {
     return { ok: false, error: "Drive sync isn't configured — add GOOGLE_API_KEY in Vercel env vars first." };
@@ -85,5 +85,6 @@ export async function listDriveFolder(folderId: string): Promise<DriveListResult
   } catch {
     return { ok: false, error: "Couldn't reach Google Drive — check the connection and try again." };
   }
-  return { ok: true, files: files.filter((f) => f.mimeType !== "application/vnd.google-apps.folder") };
+  const isFolder = (f: DriveFile) => f.mimeType === "application/vnd.google-apps.folder";
+  return { ok: true, files: files.filter((f) => !isFolder(f)), folders: files.filter(isFolder) };
 }

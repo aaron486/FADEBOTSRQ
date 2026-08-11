@@ -149,7 +149,7 @@ export function PieceEditor({ piece, aiEnabled }: { piece: PieceData; aiEnabled:
             </div>
           </div>
           <div>
-            <label className="field-label" htmlFor="p-angle">Angle</label>
+            <label className="field-label" htmlFor="p-angle">Description / angle</label>
             <input id="p-angle" className="input" value={angle} onChange={(e) => setAngle(e.target.value)} />
           </div>
         </div>
