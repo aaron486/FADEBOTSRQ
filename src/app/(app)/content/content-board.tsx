@@ -32,33 +32,24 @@ export type PieceRow = {
   updatedAt: string;
 };
 
-/* Drive thumbnail with a fallback icon (thumb links expire between syncs). */
-function PieceThumb({ row }: { row: PieceRow }) {
+/* Large card cover — the visual is the point of the card view. */
+function CardThumb({ row }: { row: PieceRow }) {
   const [failed, setFailed] = useState(false);
   if (!row.thumbnailUrl || failed) {
     const isFolder = row.assetUrl?.includes("/folders/");
     return (
-      <div
-        className="w-16 h-10 rounded flex items-center justify-center text-base flex-none"
-        style={{ background: "var(--grid)" }}
-        title={row.assetUrl ? "Preview unavailable — re-sync the folder to refresh thumbnails" : undefined}
-      >
+      <div className="w-full flex items-center justify-center text-4xl" style={{ background: "var(--grid)", aspectRatio: "16/10" }}>
         {row.assetUrl ? (isFolder ? "📁" : "🎬") : "💡"}
       </div>
     );
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={row.thumbnailUrl}
-      alt=""
-      width={64}
-      height={40}
-      className="w-16 h-10 rounded object-cover flex-none"
-      onError={() => setFailed(true)}
-    />
+    <img src={row.thumbnailUrl.replace("sz=w400", "sz=w800")} alt="" className="w-full object-cover"
+      style={{ aspectRatio: "16/10" }} onError={() => setFailed(true)} />
   );
 }
+
 
 /* ---- Vault import: paste any Drive folder link, sync it in ---- */
 function VaultFolderBar({ driveConfigured }: { driveConfigured: boolean }) {
@@ -377,68 +368,38 @@ export function ContentBoard({
             : "No pieces match those filters."}
         </div>
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm min-w-[860px]">
-            <thead>
-              <tr className="text-left text-xs text-ink-3">
-                <th className="px-3 py-2 font-medium">Piece</th>
-                <th className="px-3 py-2 font-medium">Format</th>
-                <th className="px-3 py-2 font-medium">Theme</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium">Scheduled</th>
-                <th className="px-3 py-2 font-medium text-right">Views</th>
-                <th className="px-3 py-2 font-medium">Links</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r) => (
-                <tr key={r.id} className="cursor-pointer hover:bg-accent/5" onClick={() => router.push(`/content/${r.id}`)}>
-                  <td className="px-3 py-2.5" style={{ borderTop: "1px solid var(--grid)" }}>
-                    <div className="flex items-center gap-2.5">
-                      <PieceThumb row={r} />
-                      <div>
-                        <div className="font-medium leading-tight">{r.title}</div>
-                        <div className="text-xs text-ink-3">
-                          {r.hasConcept ? "concept ready" : "no concept yet"}
-                          {r.tags ? ` · ${r.tags}` : ""}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2.5 text-xs" style={{ borderTop: "1px solid var(--grid)" }}>
-                    {pieceFormatMeta(r.format).label}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs" style={{ borderTop: "1px solid var(--grid)" }}>
-                    {r.theme ?? "—"}
-                  </td>
-                  <td className="px-3 py-2.5" style={{ borderTop: "1px solid var(--grid)" }} onClick={(e) => e.stopPropagation()}>
-                    <select className="input w-auto text-xs" value={r.status} onChange={(e) => moveStatus(r.id, e.target.value as PieceStatus)}>
-                      {PIECE_STATUSES.map((s) => (
-                        <option key={s.key} value={s.key}>{s.label}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-3 py-2.5 text-xs tabular-nums" style={{ borderTop: "1px solid var(--grid)" }}>
-                    {r.scheduledFor ? fmtDate(r.scheduledFor) : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs tabular-nums text-right" style={{ borderTop: "1px solid var(--grid)" }}>
-                    {r.views != null ? fmtCompact(r.views) : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-xs" style={{ borderTop: "1px solid var(--grid)" }} onClick={(e) => e.stopPropagation()}>
-                    {r.sourceUrl && (
-                      <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="underline mr-2">source</a>
-                    )}
-                    {r.assetUrl && (
-                      <a href={r.assetUrl} target="_blank" rel="noreferrer" className="underline mr-2">asset</a>
-                    )}
-                    {r.publishedUrl && (
-                      <a href={r.publishedUrl} target="_blank" rel="noreferrer" className="underline">post</a>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))" }}>
+          {filtered.map((r) => (
+            <div key={r.id} className="card overflow-hidden cursor-pointer hover:border-accent transition-colors"
+              onClick={() => router.push(`/content/${r.id}`)}>
+              <CardThumb row={r} />
+              <div className="p-3">
+                <div className="font-semibold leading-tight mb-0.5">{r.title}</div>
+                <div className="text-xs text-ink-3 mb-2">
+                  {pieceFormatMeta(r.format).label}
+                  {r.theme ? ` · ${r.theme}` : ""}
+                  {r.tags ? ` · ${r.tags}` : ""}
+                </div>
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                  <select className="input w-auto text-xs" value={r.status}
+                    onChange={(e) => moveStatus(r.id, e.target.value as PieceStatus)}>
+                    {PIECE_STATUSES.map((st) => (
+                      <option key={st.key} value={st.key}>{st.label}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-ink-3 tabular-nums ml-auto">
+                    {r.views != null ? `${fmtCompact(r.views)} views` : r.scheduledFor ? fmtDate(r.scheduledFor) : ""}
+                  </span>
+                </div>
+                <div className="text-xs mt-2" onClick={(e) => e.stopPropagation()}>
+                  {r.sourceUrl && <a href={r.sourceUrl} target="_blank" rel="noreferrer" className="underline mr-2">source</a>}
+                  {r.assetUrl && <a href={r.assetUrl} target="_blank" rel="noreferrer" className="underline mr-2">asset</a>}
+                  {r.publishedUrl && <a href={r.publishedUrl} target="_blank" rel="noreferrer" className="underline">post</a>}
+                  {!r.sourceUrl && !r.assetUrl && !r.publishedUrl && <span className="text-ink-3">no links yet</span>}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
