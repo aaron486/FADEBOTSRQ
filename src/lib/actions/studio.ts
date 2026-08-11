@@ -177,6 +177,26 @@ export async function deletePiece(id: string) {
   redirect("/content");
 }
 
+/* ---------- Comments under a piece ---------- */
+
+export async function addPieceComment(pieceId: string, text: string) {
+  const user = await requireUser();
+  const trimmed = text.trim();
+  if (!trimmed) return { ok: false as const, error: "Write a note first." };
+  await prisma.pieceComment.create({
+    data: { pieceId, text: trimmed, author: user.email },
+  });
+  revalidatePath(`/content/${pieceId}`);
+  return { ok: true as const };
+}
+
+export async function deletePieceComment(commentId: string) {
+  await requireUser();
+  const c = await prisma.pieceComment.delete({ where: { id: commentId } });
+  revalidatePath(`/content/${c.pieceId}`);
+  return { ok: true as const };
+}
+
 /* ---------- Assign to a creator in a campaign + create their brief ---------- */
 
 /**

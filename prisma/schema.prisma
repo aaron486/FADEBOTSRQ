@@ -309,10 +309,23 @@ model ContentPiece {
   views          Int?
   likes          Int?
   notes          String?
+  comments       PieceComment[]
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
 
   @@index([status])
+}
+
+// Team notes under a piece's preview — review feedback, edit requests, etc.
+model PieceComment {
+  id        String       @id @default(cuid())
+  pieceId   String
+  piece     ContentPiece @relation(fields: [pieceId], references: [id], onDelete: Cascade)
+  author    String?
+  text      String
+  createdAt DateTime     @default(now())
+
+  @@index([pieceId])
 }
 
 model Template {

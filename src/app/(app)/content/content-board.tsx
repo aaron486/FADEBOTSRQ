@@ -347,6 +347,12 @@ export function ContentBoard({
       <section className="flex flex-wrap items-center gap-2 mb-3">
         <input type="search" className="input flex-1 min-w-[200px]" placeholder="Search title, theme, tags, angle…"
           value={q} onChange={(e) => setQ(e.target.value)} />
+        <select className="input w-auto" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as PieceStatus | "")}>
+          <option value="">All statuses</option>
+          {PIECE_STATUSES.map((st) => (
+            <option key={st.key} value={st.key}>{st.label}</option>
+          ))}
+        </select>
         <select className="input w-auto" value={formatFilter} onChange={(e) => setFormatFilter(e.target.value as PieceFormat | "")}>
           <option value="">All formats</option>
           {PIECE_FORMATS.map((f) => (

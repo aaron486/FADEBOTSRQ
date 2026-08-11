@@ -60,6 +60,16 @@ export function toThumbUrl(input: string): string | null {
   return m ? driveThumb(m[1]) : t;
 }
 
+/** Embeddable Drive preview src for a file or folder link, if any. */
+export function drivePreviewSrc(url: string | null): string | null {
+  if (!url) return null;
+  const file = url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=)([-\w]{10,})/);
+  if (file) return `https://drive.google.com/file/d/${file[1]}/preview`;
+  const folder = url.match(/drive\.google\.com\/(?:drive\/(?:u\/\d+\/)?)?folders\/([-\w]{10,})/);
+  if (folder) return `https://drive.google.com/embeddedfolderview?id=${folder[1]}#grid`;
+  return null;
+}
+
 /** Pull the folder id out of any Google Drive folder link. */
 export function parseDriveFolderId(input: string): string | null {
   const text = input.trim();

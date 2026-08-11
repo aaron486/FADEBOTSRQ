@@ -10,7 +10,11 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
   const [piece, campaigns, creators] = await Promise.all([
     prisma.contentPiece.findUnique({
       where: { id },
-      include: { campaign: { select: { name: true } }, creator: { select: { name: true } } },
+      include: {
+        campaign: { select: { name: true } },
+        creator: { select: { name: true } },
+        comments: { orderBy: { createdAt: "desc" } },
+      },
     }),
     prisma.campaign.findMany({ orderBy: { createdAt: "desc" }, select: { id: true, name: true } }),
     prisma.creator.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
@@ -21,6 +25,12 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
     <PieceEditor
       campaigns={campaigns}
       creators={creators}
+      comments={piece.comments.map((c) => ({
+        id: c.id,
+        author: c.author,
+        text: c.text,
+        createdAt: c.createdAt.toISOString(),
+      }))}
       assignment={
         piece.campaignId && piece.creatorId
           ? {

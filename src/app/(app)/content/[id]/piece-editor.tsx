@@ -10,8 +10,10 @@ import {
   PIECE_STATUSES,
   pieceStatusMeta,
   toThumbUrl,
+  drivePreviewSrc,
+  fmtDateTime,
 } from "@/lib/creator-meta";
-import { updatePiece, deletePiece, generateConcept, assignPieceAndBrief } from "@/lib/actions/studio";
+import { updatePiece, deletePiece, generateConcept, assignPieceAndBrief, addPieceComment, deletePieceComment } from "@/lib/actions/studio";
 
 type PieceData = {
   id: string;
@@ -34,6 +36,63 @@ type PieceData = {
 };
 
 type Option = { id: string; name: string };
+export type CommentRow = { id: string; author: string | null; text: string; createdAt: string };
+
+/* In-app Drive preview + team comments under the video. */
+function PreviewAndComments({ pieceId, assetUrl, comments }: { pieceId: string; assetUrl: string; comments: CommentRow[] }) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [, startTransition] = useTransition();
+  const src = drivePreviewSrc(assetUrl);
+
+  function add() {
+    if (!text.trim() || busy) return;
+    setBusy(true);
+    startTransition(async () => {
+      await addPieceComment(pieceId, text);
+      setBusy(false);
+      setText("");
+    });
+  }
+
+  function del(id: string) {
+    startTransition(async () => {
+      await deletePieceComment(id);
+    });
+  }
+
+  if (!src && comments.length === 0 && !assetUrl) return null;
+  return (
+    <section className="card p-4">
+      <div className="text-xs font-semibold uppercase tracking-wider text-ink-2 mb-3">Preview &amp; notes</div>
+      {src ? (
+        <iframe src={src} className="w-full rounded-lg mb-3" style={{ aspectRatio: "16/10", border: "1px solid var(--edge)" }}
+          allow="autoplay" title="Content preview" />
+      ) : assetUrl ? (
+        <p className="text-xs text-ink-3 mb-3">No in-app preview for this link — <a className="underline" href={assetUrl} target="_blank" rel="noreferrer">open it ↗</a></p>
+      ) : null}
+      <ul className="space-y-2 mb-3">
+        {comments.map((c) => (
+          <li key={c.id} className="text-[13px] leading-snug flex items-start gap-2">
+            <div className="flex-1">
+              <span className="text-xs text-ink-3 tabular-nums">{fmtDateTime(c.createdAt)}</span>{" "}
+              <span className="font-medium">{c.author ?? "team"}</span>{" "}
+              <span className="text-ink-2">— {c.text}</span>
+            </div>
+            <button className="btn btn-ghost btn-sm" title="Delete note" onClick={() => del(c.id)}>✕</button>
+          </li>
+        ))}
+        {comments.length === 0 && <li className="text-xs text-ink-3">No notes yet — edit requests, feedback, approvals all go here.</li>}
+      </ul>
+      <div className="flex gap-2">
+        <input className="input flex-1" placeholder="Leave a note for the team…" value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
+        <button className="btn btn-sm" onClick={add} disabled={busy || !text.trim()}>Add note</button>
+      </div>
+    </section>
+  );
+}
 
 /* Assign the idea to a creator in a campaign and publish their brief page. */
 function AssignSection({
@@ -126,12 +185,14 @@ export function PieceEditor({
   campaigns,
   creators,
   assignment,
+  comments,
 }: {
   piece: PieceData;
   aiEnabled: boolean;
   campaigns: Option[];
   creators: Option[];
   assignment: { campaignId: string; creatorId: string; label: string } | null;
+  comments: CommentRow[];
 }) {
   const [title, setTitle] = useState(piece.title);
   const [format, setFormat] = useState<PieceFormat>(piece.format);
@@ -223,6 +284,8 @@ export function PieceEditor({
           {statusMeta.label}
         </span>
       </div>
+
+      <PreviewAndComments pieceId={piece.id} assetUrl={assetUrl} comments={comments} />
 
       <AssignSection
         pieceId={piece.id}
