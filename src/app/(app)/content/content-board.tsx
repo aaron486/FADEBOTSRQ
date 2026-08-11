@@ -155,7 +155,9 @@ export function ContentBoard({
   }
 
   /* ---- New concept form ---- */
+  const [title, setTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [assetUrl, setAssetUrl] = useState("");
   const [angle, setAngle] = useState("");
   const [format, setFormat] = useState<PieceFormat>("REACTION_VIDEO");
   const [theme, setTheme] = useState("");
@@ -167,7 +169,9 @@ export function ContentBoard({
     setNote("");
     setBusy(withAi ? "generating" : "adding");
     startTransition(async () => {
-      let title = angle.trim().slice(0, 60) || sourceUrl.trim().slice(0, 60) || "Untitled concept";
+      // Your title wins; AI only names it when you left the title blank.
+      let finalTitle =
+        title.trim() || angle.trim().slice(0, 60) || sourceUrl.trim().slice(0, 60) || "Untitled concept";
       let concept: string | null = null;
       let finalTheme = theme.trim() || null;
       if (withAi) {
@@ -176,11 +180,11 @@ export function ContentBoard({
           setBusy("idle");
           return setNote(gen.error);
         }
-        title = gen.title || title;
+        if (!title.trim()) finalTitle = gen.title || finalTitle;
         concept = gen.concept;
         finalTheme = finalTheme ?? (gen.theme || null);
       }
-      const res = await createPiece({ title, format, theme: finalTheme, sourceUrl: sourceUrl || null, angle: angle || null, concept });
+      const res = await createPiece({ title: finalTitle, format, theme: finalTheme, sourceUrl: sourceUrl || null, angle: angle || null, concept, assetUrl: assetUrl || null });
       setBusy("idle");
       if (!res.ok) return setNote(res.error);
       router.push(`/content/${res.id}`);
@@ -257,15 +261,27 @@ export function ContentBoard({
         <div className="text-xs font-semibold uppercase tracking-wider text-ink-2 mb-2">New concept</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
           <div>
+            <label className="field-label" htmlFor="c-title">Campaign title</label>
+            <input id="c-title" className="input" placeholder={`e.g. "Chiefs trap game week"`}
+              value={title} onChange={(e) => setTitle(e.target.value)} />
+            <p className="text-[11px] text-ink-3 mt-1">Leave blank and ✨ will name it for you.</p>
+          </div>
+          <div>
             <label className="field-label" htmlFor="src">Source post link (X, Instagram, TikTok)</label>
             <input id="src" className="input" placeholder="https://x.com/…  ·  instagram.com/reel/…  ·  tiktok.com/@…/video/…"
               value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
             {platform && <p className="text-[11px] text-ink-3 mt-1">Detected: {platform === "X" ? "X" : platform.charAt(0) + platform.slice(1).toLowerCase()}</p>}
           </div>
           <div>
-            <label className="field-label" htmlFor="angle">Angle — what&apos;s the play here?</label>
+            <label className="field-label" htmlFor="c-asset">Content link (Google Drive — file or folder)</label>
+            <input id="c-asset" className="input" placeholder="drive.google.com/… — a folder with several files still counts as one post"
+              value={assetUrl} onChange={(e) => setAssetUrl(e.target.value)} />
+            {assetUrl.trim() && <p className="text-[11px] text-ink-3 mt-1">Has content already → lands In vault.</p>}
+          </div>
+          <div>
+            <label className="field-label" htmlFor="angle">Description — what&apos;s this about, and what&apos;s the play?</label>
             <textarea id="angle" className="input" rows={2}
-              placeholder={`e.g. "Everyone's on the Chiefs after this post — classic public trap game"`}
+              placeholder={`e.g. "Schefter post has everyone on the Chiefs — classic public trap game, we fade it"`}
               value={angle} onChange={(e) => setAngle(e.target.value)} />
           </div>
         </div>
@@ -286,7 +302,11 @@ export function ContentBoard({
               {busy === "generating" ? "Writing concept…" : "✨ Generate concept"}
             </button>
           )}
-          <button className="btn" onClick={() => addPiece(false)} disabled={busy !== "idle" || (!sourceUrl.trim() && !angle.trim())}>
+          <button
+            className="btn"
+            onClick={() => addPiece(false)}
+            disabled={busy !== "idle" || (!title.trim() && !sourceUrl.trim() && !assetUrl.trim() && !angle.trim())}
+          >
             + Add without AI
           </button>
           {note && <span className="text-xs" style={{ color: "var(--critical)" }}>{note}</span>}
