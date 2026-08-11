@@ -23,6 +23,8 @@ export default async function BriefEditorPage({
   // Sensible starting point for a fresh brief — everything is editable.
   const defaults = {
     headline: `FADE × ${creator.name} — ${campaign.name}`,
+    sourceUrl: "",
+    concept: "",
     intro:
       `Hey ${creator.name.split(" ")[0]} — welcome to the ${campaign.name} campaign! ` +
       `We're FADE (fade.bet), and this page has everything you need: what to make, ` +
@@ -54,6 +56,8 @@ export default async function BriefEditorPage({
           ? {
               token: brief.token,
               headline: brief.headline ?? "",
+              sourceUrl: brief.sourceUrl ?? "",
+              concept: brief.concept ?? "",
               intro: brief.intro ?? "",
               deliverables: brief.deliverables ?? "",
               talkingPoints: brief.talkingPoints ?? "",

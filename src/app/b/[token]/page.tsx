@@ -64,6 +64,27 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
           </div>
         </div>
 
+        {brief.sourceUrl && (
+          <section className="card p-5 flex flex-wrap items-center gap-3">
+            <div className="mr-auto">
+              <h2 className="text-sm font-bold">It starts with this post</h2>
+              <p className="text-xs text-ink-3">Watch it first — everything below reacts to it.</p>
+            </div>
+            <a href={brief.sourceUrl} target="_blank" rel="noreferrer" className="btn btn-sm">
+              View the source post ↗
+            </a>
+          </section>
+        )}
+
+        {brief.concept && (
+          <section className="card p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2 pb-2 mb-3" style={{ borderBottom: "1px solid var(--grid)" }}>
+              The concept
+            </h2>
+            <pre className="whitespace-pre-wrap font-sans text-[14px] leading-relaxed text-ink-2">{brief.concept}</pre>
+          </section>
+        )}
+
         {deliverables.length > 0 && (
           <section className="card p-5">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2 pb-2 mb-3" style={{ borderBottom: "1px solid var(--grid)" }}>

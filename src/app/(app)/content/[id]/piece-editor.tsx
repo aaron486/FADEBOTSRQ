@@ -9,7 +9,7 @@ import {
   PIECE_STATUSES,
   pieceStatusMeta,
 } from "@/lib/creator-meta";
-import { updatePiece, deletePiece, generateConcept } from "@/lib/actions/studio";
+import { updatePiece, deletePiece, generateConcept, assignPieceAndBrief } from "@/lib/actions/studio";
 
 type PieceData = {
   id: string;
@@ -26,11 +26,111 @@ type PieceData = {
   publishedUrl: string;
   views: number | null;
   likes: number | null;
+  thumbnailUrl: string | null;
   notes: string;
   updatedAt: string;
 };
 
-export function PieceEditor({ piece, aiEnabled }: { piece: PieceData; aiEnabled: boolean }) {
+type Option = { id: string; name: string };
+
+/* Assign the idea to a creator in a campaign and publish their brief page. */
+function AssignSection({
+  pieceId,
+  campaigns,
+  creators,
+  assignment,
+  onAssigned,
+}: {
+  pieceId: string;
+  campaigns: Option[];
+  creators: Option[];
+  assignment: { campaignId: string; creatorId: string; label: string } | null;
+  onAssigned: () => void;
+}) {
+  const [campaignId, setCampaignId] = useState(assignment?.campaignId ?? "");
+  const [creatorId, setCreatorId] = useState(assignment?.creatorId ?? "");
+  const [result, setResult] = useState<{ briefPath: string; editorPath: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [, startTransition] = useTransition();
+
+  function go() {
+    if (!campaignId || !creatorId || busy) return;
+    setBusy(true);
+    startTransition(async () => {
+      const res = await assignPieceAndBrief(pieceId, campaignId, creatorId);
+      setBusy(false);
+      if (res.ok) {
+        setResult({ briefPath: res.briefPath, editorPath: res.editorPath });
+        onAssigned();
+      }
+    });
+  }
+
+  function copy() {
+    if (!result) return;
+    void navigator.clipboard.writeText(`${window.location.origin}${result.briefPath}`).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  return (
+    <section className="card p-4">
+      <div className="text-xs font-semibold uppercase tracking-wider text-ink-2 mb-2">
+        Assign &amp; brief
+      </div>
+      <p className="text-xs text-ink-3 mb-2">
+        Hand this idea to a creator: they&apos;re added to the campaign, and their shareable brief page is
+        created from this piece — concept, description, and the source post included.
+        {assignment && ` Currently assigned to ${assignment.label}.`}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <select className="input w-auto" value={campaignId} onChange={(e) => setCampaignId(e.target.value)} aria-label="Campaign">
+          <option value="">Pick a campaign…</option>
+          {campaigns.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <select className="input w-auto" value={creatorId} onChange={(e) => setCreatorId(e.target.value)} aria-label="Creator">
+          <option value="">Pick a creator…</option>
+          {creators.map((c) => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        <button className="btn btn-primary btn-sm" onClick={go} disabled={busy || !campaignId || !creatorId}>
+          {busy ? "Creating…" : assignment ? "Re-assign & update brief" : "Assign & create brief"}
+        </button>
+        {result && (
+          <>
+            <a href={result.briefPath} target="_blank" rel="noreferrer" className="btn btn-sm">Open brief ↗</a>
+            <button className="btn btn-sm" onClick={copy}>{copied ? "Copied!" : "Copy brief link"}</button>
+            <Link href={result.editorPath} className="btn btn-ghost btn-sm">Edit brief</Link>
+          </>
+        )}
+      </div>
+      {campaigns.length === 0 && (
+        <p className="text-xs mt-2" style={{ color: "var(--critical)" }}>
+          No campaigns yet — create one on the Campaigns tab first.
+        </p>
+      )}
+    </section>
+  );
+}
+
+export function PieceEditor({
+  piece,
+  aiEnabled,
+  campaigns,
+  creators,
+  assignment,
+}: {
+  piece: PieceData;
+  aiEnabled: boolean;
+  campaigns: Option[];
+  creators: Option[];
+  assignment: { campaignId: string; creatorId: string; label: string } | null;
+}) {
   const [title, setTitle] = useState(piece.title);
   const [format, setFormat] = useState<PieceFormat>(piece.format);
   const [status, setStatus] = useState<PieceStatus>(piece.status);
@@ -102,12 +202,26 @@ export function PieceEditor({ piece, aiEnabled }: { piece: PieceData; aiEnabled:
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <Link href="/content" className="btn btn-ghost btn-sm">← Content studio</Link>
+        {piece.thumbnailUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={piece.thumbnailUrl} alt="" className="h-10 w-16 rounded object-cover"
+            onError={(e) => { e.currentTarget.style.display = "none"; }} />
+        )}
         <h1 className="text-xl font-bold">{piece.title}</h1>
         <span className="chip flex items-center gap-1.5">
           <span className="dot" style={{ background: statusMeta.colorVar }} />
           {statusMeta.label}
         </span>
       </div>
+
+      <AssignSection
+        pieceId={piece.id}
+        campaigns={campaigns}
+        creators={creators}
+        assignment={assignment}
+        // Assigning moves a Needed piece into production server-side; mirror it here.
+        onAssigned={() => setStatus((s) => (s === "NEEDED" ? "IN_PROGRESS" : s))}
+      />
 
       <section className="card p-4 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
