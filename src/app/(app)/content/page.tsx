@@ -5,7 +5,10 @@ import { ContentBoard, PieceRow } from "./content-board";
 export const dynamic = "force-dynamic";
 
 export default async function ContentPage() {
-  const pieces = await prisma.contentPiece.findMany({ orderBy: { updatedAt: "desc" } });
+  const [pieces, vaultSetting] = await Promise.all([
+    prisma.contentPiece.findMany({ orderBy: { updatedAt: "desc" } }),
+    prisma.appSetting.findUnique({ where: { key: "vaultFolderUrl" } }),
+  ]);
 
   const rows: PieceRow[] = pieces.map((p) => ({
     id: p.id,
@@ -20,8 +23,16 @@ export default async function ContentPage() {
     assetUrl: p.assetUrl,
     scheduledFor: p.scheduledFor ? p.scheduledFor.toISOString().slice(0, 10) : null,
     publishedUrl: p.publishedUrl,
+    views: p.views,
     updatedAt: p.updatedAt.toISOString(),
   }));
 
-  return <ContentBoard rows={rows} aiEnabled={!!process.env.ANTHROPIC_API_KEY} />;
+  return (
+    <ContentBoard
+      rows={rows}
+      aiEnabled={!!process.env.ANTHROPIC_API_KEY}
+      driveConfigured={!!process.env.GOOGLE_API_KEY}
+      vaultFolderUrl={vaultSetting?.value ?? null}
+    />
+  );
 }

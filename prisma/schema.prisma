@@ -293,8 +293,11 @@ model ContentPiece {
   angle          String?
   concept        String?
   assetUrl       String?
+  driveFileId    String?     @unique
   scheduledFor   DateTime?
   publishedUrl   String?
+  views          Int?
+  likes          Int?
   notes          String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
