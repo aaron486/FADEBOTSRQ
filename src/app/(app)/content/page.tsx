@@ -5,10 +5,7 @@ import { ContentBoard, PieceRow } from "./content-board";
 export const dynamic = "force-dynamic";
 
 export default async function ContentPage() {
-  const [pieces, vaultSetting] = await Promise.all([
-    prisma.contentPiece.findMany({ orderBy: { updatedAt: "desc" } }),
-    prisma.appSetting.findUnique({ where: { key: "vaultFolderUrl" } }),
-  ]);
+  const pieces = await prisma.contentPiece.findMany({ orderBy: { updatedAt: "desc" } });
 
   const rows: PieceRow[] = pieces.map((p) => ({
     id: p.id,
@@ -32,7 +29,6 @@ export default async function ContentPage() {
       rows={rows}
       aiEnabled={!!process.env.ANTHROPIC_API_KEY}
       driveConfigured={!!process.env.GOOGLE_API_KEY}
-      vaultFolderUrl={vaultSetting?.value ?? null}
     />
   );
 }

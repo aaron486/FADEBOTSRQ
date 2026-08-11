@@ -45,35 +45,20 @@ function pieceData(input: PieceInput) {
   };
 }
 
-/* ---------- Vault Drive folder ---------- */
+/* ---------- Vault import by folder link ---------- */
 
-/** Save the studio-wide vault Drive folder link. */
-export async function setVaultFolder(url: string) {
+/**
+ * Import any Drive folder (pasted by link — there can be many vault folders)
+ * as In-vault pieces.
+ */
+export async function syncVaultByLink(url: string) {
   await requireUser();
-  const trimmed = url.trim();
-  if (!trimmed) {
-    await prisma.appSetting.deleteMany({ where: { key: { in: ["vaultFolderUrl", "vaultFolderId"] } } });
-    revalidatePath("/content");
-    return { ok: true as const };
-  }
-  const folderId = parseDriveFolderId(trimmed);
+  const folderId = parseDriveFolderId(url);
   if (!folderId) {
     return { ok: false as const, error: "That doesn't look like a Drive folder link — it should contain /folders/…" };
   }
-  for (const [key, value] of [["vaultFolderUrl", trimmed], ["vaultFolderId", folderId]] as const) {
-    await prisma.appSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
-  }
-  revalidatePath("/content");
-  return { ok: true as const };
-}
 
-/** Pull the vault Drive folder's files in as In-vault pieces. */
-export async function syncVaultFolder() {
-  await requireUser();
-  const setting = await prisma.appSetting.findUnique({ where: { key: "vaultFolderId" } });
-  if (!setting) return { ok: false as const, error: "Link your vault Drive folder first." };
-
-  const listed = await listDriveFolder(setting.value);
+  const listed = await listDriveFolder(folderId);
   if (!listed.ok) return { ok: false as const, error: listed.error };
 
   // One post = one piece: a loose file is a single-asset post, and a SUBFOLDER
