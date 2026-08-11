@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <rect width="100" height="100" rx="18" fill="#221f20"/>
-  <g transform="translate(13.5 38.7) scale(0.2264)">
-    <g fill="#ffffff" transform="translate(21.3 0) skewX(-12)">
+  <g transform="translate(13.6 43.1) scale(0.1387)">
+    <g fill="#ffffff" transform="translate(21.3 0) skewX(-12) scale(1.68 1)">
       <path d="M0,0 H60 V22 H24 V40 H56 V62 H24 V100 H0 Z"/>
       <path fill-rule="evenodd" d="M112,0 L130,0 L138,100 L115,100 L127.5,70 L121.5,70 L109,100 L70,100 Z M116,30 L116,60 L97,60 Z"/>
       <path fill-rule="evenodd" d="M155,0 H210 L225,14 V86 L211,100 H155 Z M179,22 H202 V78 H179 Z"/>
