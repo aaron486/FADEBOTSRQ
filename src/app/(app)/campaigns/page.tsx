@@ -9,14 +9,20 @@ import {
   fmtDate,
 } from "@/lib/creator-meta";
 import { NewCampaignForm } from "./new-campaign-form";
+import { BudgetOverview } from "./budget-overview";
 
 export const dynamic = "force-dynamic";
 
 export default async function CampaignsPage() {
-  const campaigns = await prisma.campaign.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { creators: { include: { creator: true } } },
-  });
+  const [campaigns, creatorTotals, budgetSetting] = await Promise.all([
+    prisma.campaign.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { creators: { include: { creator: true } } },
+    }),
+    prisma.creator.aggregate({ _sum: { agreedCostCents: true, paidCents: true } }),
+    prisma.appSetting.findUnique({ where: { key: "overallBudgetCents" } }),
+  ]);
+  const overallBudgetCents = budgetSetting ? Number(budgetSetting.value) || null : null;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -29,6 +35,13 @@ export default async function CampaignsPage() {
         </div>
         <NewCampaignForm />
       </div>
+
+      <BudgetOverview
+        overallBudgetCents={overallBudgetCents}
+        campaignBudgetsCents={campaigns.reduce((s, c) => s + (c.budgetCents ?? 0), 0)}
+        committedCents={creatorTotals._sum.agreedCostCents ?? 0}
+        spentCents={creatorTotals._sum.paidCents ?? 0}
+      />
 
       {campaigns.length === 0 ? (
         <div className="card p-8 text-center text-sm text-ink-3">
