@@ -256,6 +256,45 @@ model CampaignCreator {
   @@index([creatorId])
 }
 
+// ---------- Marketing content studio ----------
+
+enum PieceFormat {
+  REACTION_VIDEO
+  PHOTO_SLIDESHOW
+  FADE_STORY
+  OTHER
+}
+
+enum PieceStatus {
+  NEEDED
+  IN_PROGRESS
+  IN_VAULT
+  QUEUED
+  PUBLISHED
+}
+
+// A piece of marketing content: starts as a concept from a source post +
+// angle, moves through production into the vault, then gets queued/published.
+model ContentPiece {
+  id             String      @id @default(cuid())
+  title          String
+  format         PieceFormat @default(REACTION_VIDEO)
+  status         PieceStatus @default(NEEDED)
+  theme          String?
+  tags           String?
+  sourceUrl      String?
+  angle          String?
+  concept        String?
+  assetUrl       String?
+  scheduledFor   DateTime?
+  publishedUrl   String?
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([status])
+}
+
 model Template {
   id        String    @id @default(cuid())
   name      String

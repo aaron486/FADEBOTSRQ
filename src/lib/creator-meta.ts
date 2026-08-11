@@ -59,6 +59,42 @@ export function parseDriveFolderId(input: string): string | null {
   return m ? m[1] : null;
 }
 
+/* ---- Marketing content studio ---- */
+
+export type PieceFormat = "REACTION_VIDEO" | "PHOTO_SLIDESHOW" | "FADE_STORY" | "OTHER";
+export type PieceStatus = "NEEDED" | "IN_PROGRESS" | "IN_VAULT" | "QUEUED" | "PUBLISHED";
+
+export const PIECE_FORMATS: { key: PieceFormat; label: string }[] = [
+  { key: "REACTION_VIDEO", label: "Reaction video" },
+  { key: "PHOTO_SLIDESHOW", label: "Photo slideshow" },
+  { key: "FADE_STORY", label: "Fade story" },
+  { key: "OTHER", label: "Other" },
+];
+
+export const pieceFormatMeta = (f: PieceFormat) =>
+  PIECE_FORMATS.find((x) => x.key === f) ?? PIECE_FORMATS[3];
+
+export const PIECE_STATUSES: { key: PieceStatus; label: string; colorVar: string }[] = [
+  { key: "NEEDED", label: "Needed", colorVar: "var(--stage-1)" },
+  { key: "IN_PROGRESS", label: "In progress", colorVar: "var(--stage-3)" },
+  { key: "IN_VAULT", label: "In vault", colorVar: "var(--stage-4)" },
+  { key: "QUEUED", label: "Queued", colorVar: "var(--stage-5)" },
+  { key: "PUBLISHED", label: "Published", colorVar: "var(--stage-6)" },
+];
+
+export const pieceStatusMeta = (s: PieceStatus) =>
+  PIECE_STATUSES.find((x) => x.key === s) ?? PIECE_STATUSES[0];
+
+/** Which social platform a pasted post link belongs to, if any. */
+export function detectPostPlatform(url: string): "X" | "INSTAGRAM" | "TIKTOK" | "YOUTUBE" | null {
+  const t = url.trim().toLowerCase();
+  if (/(^|\/\/|\.)x\.com\//.test(t) || /twitter\.com\//.test(t)) return "X";
+  if (/instagram\.com\//.test(t)) return "INSTAGRAM";
+  if (/tiktok\.com\//.test(t)) return "TIKTOK";
+  if (/youtube\.com\/|youtu\.be\//.test(t)) return "YOUTUBE";
+  return null;
+}
+
 export const CONTRACT_STATUSES: { key: ContractStatus; label: string }[] = [
   { key: "NONE", label: "None" },
   { key: "DRAFTING", label: "Drafting" },
