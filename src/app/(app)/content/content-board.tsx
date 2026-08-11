@@ -10,8 +10,9 @@ import {
   pieceFormatMeta,
   detectPostPlatform,
   fmtDate,
+  fmtCompact,
 } from "@/lib/creator-meta";
-import { createPiece, generateConcept, setPieceStatus } from "@/lib/actions/studio";
+import { createPiece, generateConcept, setPieceStatus, setVaultFolder, syncVaultFolder } from "@/lib/actions/studio";
 
 export type PieceRow = {
   id: string;
@@ -26,10 +27,122 @@ export type PieceRow = {
   assetUrl: string | null;
   scheduledFor: string | null;
   publishedUrl: string | null;
+  views: number | null;
   updatedAt: string;
 };
 
-export function ContentBoard({ rows: initial, aiEnabled }: { rows: PieceRow[]; aiEnabled: boolean }) {
+/* ---- Vault Drive folder: link once, sync files in as In-vault pieces ---- */
+function VaultFolderBar({
+  vaultFolderUrl,
+  driveConfigured,
+}: {
+  vaultFolderUrl: string | null;
+  driveConfigured: boolean;
+}) {
+  const [editing, setEditing] = useState(!vaultFolderUrl);
+  const [draft, setDraft] = useState(vaultFolderUrl ?? "");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [, startTransition] = useTransition();
+
+  // Render-time resync when the saved folder changes server-side.
+  const [lastUrl, setLastUrl] = useState(vaultFolderUrl);
+  if (vaultFolderUrl !== lastUrl) {
+    setLastUrl(vaultFolderUrl);
+    setDraft(vaultFolderUrl ?? "");
+    setEditing(!vaultFolderUrl);
+  }
+
+  function save() {
+    setNote("");
+    setBusy(true);
+    startTransition(async () => {
+      const res = await setVaultFolder(draft);
+      setBusy(false);
+      if (!res.ok) return setNote(res.error);
+      setEditing(false);
+      setNote(draft.trim() ? "Folder linked." : "Folder removed.");
+    });
+  }
+
+  function sync() {
+    setNote("");
+    setBusy(true);
+    startTransition(async () => {
+      const res = await syncVaultFolder();
+      setBusy(false);
+      setNote(
+        res.ok
+          ? `Synced — ${res.total} file${res.total === 1 ? "" : "s"} in the folder, ${res.added} new piece${res.added === 1 ? "" : "s"} added to the vault.`
+          : res.error
+      );
+    });
+  }
+
+  const isError = note && !/linked|removed|Synced/.test(note);
+
+  return (
+    <section className="card p-4 mb-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-xs font-semibold uppercase tracking-wider text-ink-2 mr-auto">
+          Vault Drive folder
+        </div>
+        {editing ? (
+          <>
+            <input
+              className="input flex-1 min-w-[260px]"
+              placeholder="https://drive.google.com/drive/folders/… — where your finished content lives"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              aria-label="Vault Drive folder link"
+            />
+            <button className="btn btn-primary btn-sm" onClick={save} disabled={busy}>
+              Save
+            </button>
+            {vaultFolderUrl && (
+              <button className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>Cancel</button>
+            )}
+          </>
+        ) : (
+          <>
+            <a href={vaultFolderUrl!} target="_blank" rel="noreferrer" className="btn btn-sm">
+              Open folder ↗
+            </a>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={sync}
+              disabled={busy || !driveConfigured}
+              title={driveConfigured ? "Pull the folder's files in as In-vault pieces" : "Add GOOGLE_API_KEY in Vercel to enable sync"}
+            >
+              {busy ? "Syncing…" : "⇅ Sync vault"}
+            </button>
+            <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>Edit</button>
+          </>
+        )}
+      </div>
+      <p className="text-xs text-ink-3 mt-2">
+        Every file in this folder becomes an <b>In vault</b> piece here (deduped by file, titles from
+        filenames) — drop finished content in Drive, hit sync, and it&apos;s tracked.
+        {!driveConfigured && " Sync needs the GOOGLE_API_KEY env var in Vercel."}
+      </p>
+      {note && (
+        <p className="text-xs mt-1" style={{ color: isError ? "var(--critical)" : "var(--good-text)" }}>{note}</p>
+      )}
+    </section>
+  );
+}
+
+export function ContentBoard({
+  rows: initial,
+  aiEnabled,
+  driveConfigured,
+  vaultFolderUrl,
+}: {
+  rows: PieceRow[];
+  aiEnabled: boolean;
+  driveConfigured: boolean;
+  vaultFolderUrl: string | null;
+}) {
   const router = useRouter();
   const [rows, setRows] = useState(initial);
   const [, startTransition] = useTransition();
@@ -137,6 +250,8 @@ export function ContentBoard({ rows: initial, aiEnabled }: { rows: PieceRow[]; a
         ))}
       </section>
 
+      <VaultFolderBar vaultFolderUrl={vaultFolderUrl} driveConfigured={driveConfigured} />
+
       {/* New concept */}
       <section className="card p-4 mb-4">
         <div className="text-xs font-semibold uppercase tracking-wider text-ink-2 mb-2">New concept</div>
@@ -218,6 +333,7 @@ export function ContentBoard({ rows: initial, aiEnabled }: { rows: PieceRow[]; a
                 <th className="px-3 py-2 font-medium">Theme</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 font-medium">Scheduled</th>
+                <th className="px-3 py-2 font-medium text-right">Views</th>
                 <th className="px-3 py-2 font-medium">Links</th>
               </tr>
             </thead>
@@ -246,6 +362,9 @@ export function ContentBoard({ rows: initial, aiEnabled }: { rows: PieceRow[]; a
                   </td>
                   <td className="px-3 py-2.5 text-xs tabular-nums" style={{ borderTop: "1px solid var(--grid)" }}>
                     {r.scheduledFor ? fmtDate(r.scheduledFor) : "—"}
+                  </td>
+                  <td className="px-3 py-2.5 text-xs tabular-nums text-right" style={{ borderTop: "1px solid var(--grid)" }}>
+                    {r.views != null ? fmtCompact(r.views) : "—"}
                   </td>
                   <td className="px-3 py-2.5 text-xs" style={{ borderTop: "1px solid var(--grid)" }} onClick={(e) => e.stopPropagation()}>
                     {r.sourceUrl && (

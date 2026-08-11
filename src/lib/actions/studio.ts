@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/auth";
-import { PieceFormat, PieceStatus, PIECE_FORMATS, detectPostPlatform } from "@/lib/creator-meta";
+import { PieceFormat, PieceStatus, PIECE_FORMATS, detectPostPlatform, parseDriveFolderId } from "@/lib/creator-meta";
+import { listDriveFolder } from "@/lib/drive";
 
 const clean = (v: string | null | undefined) => v?.trim() || null;
 
@@ -21,6 +22,8 @@ export type PieceInput = {
   assetUrl: string | null;
   scheduledFor: string | null; // yyyy-mm-dd
   publishedUrl: string | null;
+  views: number | null;
+  likes: number | null;
   notes: string | null;
 };
 
@@ -36,8 +39,64 @@ function pieceData(input: PieceInput) {
     assetUrl: clean(input.assetUrl),
     scheduledFor: input.scheduledFor ? new Date(`${input.scheduledFor}T00:00:00Z`) : null,
     publishedUrl: clean(input.publishedUrl),
+    views: input.views,
+    likes: input.likes,
     notes: clean(input.notes),
   };
+}
+
+/* ---------- Vault Drive folder ---------- */
+
+/** Save the studio-wide vault Drive folder link. */
+export async function setVaultFolder(url: string) {
+  await requireUser();
+  const trimmed = url.trim();
+  if (!trimmed) {
+    await prisma.appSetting.deleteMany({ where: { key: { in: ["vaultFolderUrl", "vaultFolderId"] } } });
+    revalidatePath("/content");
+    return { ok: true as const };
+  }
+  const folderId = parseDriveFolderId(trimmed);
+  if (!folderId) {
+    return { ok: false as const, error: "That doesn't look like a Drive folder link — it should contain /folders/…" };
+  }
+  for (const [key, value] of [["vaultFolderUrl", trimmed], ["vaultFolderId", folderId]] as const) {
+    await prisma.appSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
+  }
+  revalidatePath("/content");
+  return { ok: true as const };
+}
+
+/** Pull the vault Drive folder's files in as In-vault pieces. */
+export async function syncVaultFolder() {
+  await requireUser();
+  const setting = await prisma.appSetting.findUnique({ where: { key: "vaultFolderId" } });
+  if (!setting) return { ok: false as const, error: "Link your vault Drive folder first." };
+
+  const listed = await listDriveFolder(setting.value);
+  if (!listed.ok) return { ok: false as const, error: listed.error };
+
+  let added = 0;
+  for (const f of listed.files) {
+    const url = f.webViewLink ?? `https://drive.google.com/file/d/${f.id}/view`;
+    const existing = await prisma.contentPiece.findUnique({ where: { driveFileId: f.id } });
+    if (existing) {
+      await prisma.contentPiece.update({ where: { id: existing.id }, data: { assetUrl: url } });
+    } else {
+      added += 1;
+      await prisma.contentPiece.create({
+        data: {
+          title: f.name.replace(/\.[a-z0-9]{2,5}$/i, ""),
+          format: "OTHER",
+          status: "IN_VAULT",
+          assetUrl: url,
+          driveFileId: f.id,
+        },
+      });
+    }
+  }
+  revalidatePath("/content");
+  return { ok: true as const, added, total: listed.files.length };
 }
 
 /** Quick-add from the board: link + angle + format (+ optional generated concept). */

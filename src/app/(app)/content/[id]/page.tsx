@@ -25,6 +25,8 @@ export default async function PiecePage({ params }: { params: Promise<{ id: stri
         assetUrl: piece.assetUrl ?? "",
         scheduledFor: piece.scheduledFor ? piece.scheduledFor.toISOString().slice(0, 10) : "",
         publishedUrl: piece.publishedUrl ?? "",
+        views: piece.views,
+        likes: piece.likes,
         notes: piece.notes ?? "",
         updatedAt: piece.updatedAt.toISOString(),
       }}

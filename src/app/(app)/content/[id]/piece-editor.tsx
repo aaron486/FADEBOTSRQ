@@ -24,6 +24,8 @@ type PieceData = {
   assetUrl: string;
   scheduledFor: string;
   publishedUrl: string;
+  views: number | null;
+  likes: number | null;
   notes: string;
   updatedAt: string;
 };
@@ -40,6 +42,8 @@ export function PieceEditor({ piece, aiEnabled }: { piece: PieceData; aiEnabled:
   const [assetUrl, setAssetUrl] = useState(piece.assetUrl);
   const [scheduledFor, setScheduledFor] = useState(piece.scheduledFor);
   const [publishedUrl, setPublishedUrl] = useState(piece.publishedUrl);
+  const [views, setViews] = useState(piece.views != null ? String(piece.views) : "");
+  const [likes, setLikes] = useState(piece.likes != null ? String(piece.likes) : "");
   const [notes, setNotes] = useState(piece.notes);
   const [note, setNote] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -62,6 +66,8 @@ export function PieceEditor({ piece, aiEnabled }: { piece: PieceData; aiEnabled:
         assetUrl: assetUrl || null,
         scheduledFor: scheduledFor || null,
         publishedUrl: publishedUrl || null,
+        views: views.trim() === "" ? null : Number(views),
+        likes: likes.trim() === "" ? null : Number(likes),
         notes: notes || null,
       });
       setNote(res.ok ? "Saved." : res.error);
@@ -172,8 +178,24 @@ export function PieceEditor({ piece, aiEnabled }: { piece: PieceData; aiEnabled:
             <input id="p-sched" className="input" type="date" value={scheduledFor} onChange={(e) => setScheduledFor(e.target.value)} />
           </div>
           <div>
-            <label className="field-label" htmlFor="p-pub">Published post link</label>
-            <input id="p-pub" className="input" value={publishedUrl} onChange={(e) => setPublishedUrl(e.target.value)} />
+            <label className="field-label" htmlFor="p-pub">Live post link (IG / X / TikTok)</label>
+            <div className="flex gap-2">
+              <input id="p-pub" className="input flex-1" placeholder="paste once it's live" value={publishedUrl} onChange={(e) => setPublishedUrl(e.target.value)} />
+              {publishedUrl.trim() && (
+                <a href={publishedUrl} target="_blank" rel="noreferrer" className="btn btn-sm self-center" title="Open live post">↗</a>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="field-label" htmlFor="p-views">Views</label>
+            <input id="p-views" className="input" type="number" min={0} placeholder="from the live post" value={views} onChange={(e) => setViews(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="p-likes">Likes</label>
+            <input id="p-likes" className="input" type="number" min={0} placeholder="from the live post" value={likes} onChange={(e) => setLikes(e.target.value)} />
           </div>
         </div>
 
