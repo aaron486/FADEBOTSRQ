@@ -4,10 +4,10 @@
 export function FadeWordmark({ className, title = "FADE" }: { className?: string; title?: string }) {
   return (
     <svg
-      viewBox="-5 -4 330 108"
+      viewBox="-5 -4 532 108"
       // Intrinsic size so `height + width:auto` resolves the same in every
       // browser (Safari needs this) — CSS still controls the rendered size.
-      width={330}
+      width={532}
       height={108}
       className={className}
       role="img"
@@ -15,7 +15,7 @@ export function FadeWordmark({ className, title = "FADE" }: { className?: string
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <g transform="translate(21.3 0) skewX(-12)">
+      <g transform="translate(21.3 0) skewX(-12) scale(1.68 1)">
         {/* F */}
         <path d="M0,0 H60 V22 H24 V40 H56 V62 H24 V100 H0 Z" />
         {/* A — flat apex, long hypotenuse to a sharp bottom-left point,
