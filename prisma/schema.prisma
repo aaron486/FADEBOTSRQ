@@ -256,6 +256,13 @@ model CampaignCreator {
   @@index([creatorId])
 }
 
+// Small key-value store for app-wide settings (e.g. overall marketing budget).
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 // ---------- Marketing content studio ----------
 
 enum PieceFormat {

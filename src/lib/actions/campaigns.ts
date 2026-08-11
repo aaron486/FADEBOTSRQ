@@ -11,6 +11,22 @@ function revalidateCampaign(id: string) {
   revalidatePath(`/campaigns/${id}`);
 }
 
+/** Overall marketing budget (all campaigns, all creators) — stored app-wide. */
+export async function setOverallBudget(cents: number | null) {
+  await requireUser();
+  if (cents == null) {
+    await prisma.appSetting.deleteMany({ where: { key: "overallBudgetCents" } });
+  } else {
+    await prisma.appSetting.upsert({
+      where: { key: "overallBudgetCents" },
+      create: { key: "overallBudgetCents", value: String(cents) },
+      update: { value: String(cents) },
+    });
+  }
+  revalidatePath("/campaigns");
+  return { ok: true as const };
+}
+
 export async function createCampaign(name: string) {
   await requireUser();
   const trimmed = name.trim();
