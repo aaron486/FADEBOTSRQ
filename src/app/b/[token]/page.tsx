@@ -9,6 +9,21 @@ export const dynamic = "force-dynamic";
 // Private-link page — keep it out of search engines.
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 
+// "Instagram: @Fade.bet" -> profile URL for the platform named in the line.
+function socialHref(line: string): string | null {
+  const m = line.match(/^\s*(instagram|x|twitter|tiktok|youtube)\s*:\s*@?(.+)$/i);
+  if (!m) return null;
+  const h = m[2].trim().replace(/^@/, "");
+  switch (m[1].toLowerCase()) {
+    case "instagram": return `https://instagram.com/${h}`;
+    case "x":
+    case "twitter": return `https://x.com/${h}`;
+    case "tiktok": return `https://www.tiktok.com/@${h}`;
+    case "youtube": return `https://www.youtube.com/@${h}`;
+  }
+  return null;
+}
+
 const lines = (v: string | null) =>
   (v ?? "")
     .split("\n")
@@ -77,7 +92,21 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
               </ul>
             )}
             {lines(brief.brandSocials).length > 0 && (
-              <p className="text-xs text-ink-3">{lines(brief.brandSocials).join(" · ")}</p>
+              <p className="text-xs text-ink-3">
+                {lines(brief.brandSocials).map((l, i) => {
+                  const href = socialHref(l);
+                  return (
+                    <span key={i}>
+                      {i > 0 && " · "}
+                      {href ? (
+                        <a href={href} target="_blank" rel="noreferrer" className="underline">{l}</a>
+                      ) : (
+                        l
+                      )}
+                    </span>
+                  );
+                })}
+              </p>
             )}
           </section>
         )}

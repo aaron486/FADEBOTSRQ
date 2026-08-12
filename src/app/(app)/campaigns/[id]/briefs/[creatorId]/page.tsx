@@ -26,7 +26,7 @@ export default async function BriefEditorPage({
     sourceUrl: "",
     concept: "",
     referenceLinks: "",
-    brandSocials: "Instagram: [@handle]\nX: [@handle]\nTikTok: [@handle]",
+    brandSocials: "Instagram: @Fade.bet\nX: @fade__bet\nTikTok: @fadebet",
     productDetails:
       "FADE (fade.bet) is a sports-betting entertainment platform built around one idea: fade the public — bet against what the crowd loves. [Add product specifics: how it works, promos, availability]",
     differentiators:
