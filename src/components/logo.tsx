@@ -1,34 +1,25 @@
-// FADE wordmark, recreated as vector paths from the brand logo so it scales
-// crisply and follows the current text color (white in dark mode, ink in light).
+// FADE wordmark — the brand's actual vector paths (from
+// fade-logo-icon-black-on-white-01.svg), recolored via currentColor so it
+// renders white in dark mode and ink in light mode.
 
 export function FadeWordmark({ className, title = "FADE" }: { className?: string; title?: string }) {
   return (
     <svg
-      viewBox="-5 -4 532 108"
+      viewBox="98 421 804 158"
       // Intrinsic size so `height + width:auto` resolves the same in every
       // browser (Safari needs this) — CSS still controls the rendered size.
-      width={532}
-      height={108}
+      width={804}
+      height={158}
       className={className}
       role="img"
       aria-label={title}
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <g transform="translate(21.3 0) skewX(-12) scale(1.68 1)">
-        {/* F */}
-        <path d="M0,0 H60 V22 H24 V40 H56 V62 H24 V100 H0 Z" />
-        {/* A — flat apex, long hypotenuse to a sharp bottom-left point,
-            triangular counter, thin speed-slit in the bottom edge */}
-        <path
-          fillRule="evenodd"
-          d="M112,0 L130,0 L138,100 L115,100 L127.5,70 L121.5,70 L109,100 L70,100 Z M116,30 L116,60 L97,60 Z"
-        />
-        {/* D — chamfered right corners */}
-        <path fillRule="evenodd" d="M155,0 H210 L225,14 V86 L211,100 H155 Z M179,22 H202 V78 H179 Z" />
-        {/* E — angled cut on the top arm's right end */}
-        <path d="M237,0 H298 L289,22 H261 V40 H291 V62 H261 V78 H296 V100 H237 Z" />
-      </g>
+      <polygon points="231.7,573.7 370,426.3 430.5,426.3 468.8,573.7 348.9,573.7 348.9,541.4 403.7,541.4 390,488.4 304,573.7" />
+      <path d="M684,426.3H517l-48.2,147.4H634l22.9-14.7l36.9-113.3L684,426.3z M596.5,541.8H547l26.9-82.6h49.5L596.5,541.8z" />
+      <polygon points="775.7,459.1 766.2,488.2 848.3,488.2 840.5,511.8 758.5,511.8 748.7,541.8 858.7,541.8 848.3,573.7 674.4,573.7 722.4,426.3 896.3,426.3 885.6,459.1" />
+      <polygon points="207,458.6 197.7,487.8 275.6,488.4 254.3,511 190.1,511 169.9,573.7 103.7,573.7 151.8,426.3 333.8,426.3 303.2,458.9" />
     </svg>
   );
 }
