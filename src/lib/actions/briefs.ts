@@ -6,6 +6,19 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/auth";
 import { PLATFORMS, Platform, channels, fmtDate, fmtMoneyCents } from "@/lib/creator-meta";
+import { BriefDefaults } from "@/lib/brief-defaults";
+
+/** Save the brand-level brief boilerplate shared by every brief. */
+export async function saveBriefDefaults(input: BriefDefaults) {
+  await requireUser();
+  await prisma.appSetting.upsert({
+    where: { key: "briefDefaults" },
+    create: { key: "briefDefaults", value: JSON.stringify(input) },
+    update: { value: JSON.stringify(input) },
+  });
+  revalidatePath("/settings");
+  return { ok: true as const };
+}
 
 export type BriefInput = {
   headline: string;

@@ -26,19 +26,17 @@ export default async function BriefEditorPage({
     sourceUrl: "",
     concept: "",
     referenceLinks: "",
-    brandSocials: "Instagram: @Fade.bet\nX: @fade__bet\nTikTok: @fadebet",
-    productDetails:
-      "FADE (fade.bet) is a sports-betting entertainment platform built around one idea: fade the public — bet against what the crowd loves. [Add product specifics: how it works, promos, availability]",
-    differentiators:
-      "We own the fade-the-public angle — nobody else does\nEntertainment-first, not another odds screen\n[Add 1–2 more]",
+    brandSocials: "",
+    productDetails: "",
+    differentiators: "",
     mainGoal: "Brand awareness + signups",
     targetAudience: "Sports fans 21+ who bet casually, love the sweat, and follow sports culture accounts",
     desiredAction: "Tap the [tracking link] in bio / use code [CODE]",
-    visualGuidelines: "Natural lighting, shot on phone is fine\nShow the app screen when relevant\nCaptions on for sound-off viewers",
-    tone: "Funny, confident, authentic — sports-bar energy, never corporate",
-    legalDisclosure: "#ad visible in the caption (not buried)\n21+ only — include \"21+. Gambling problem? Call 1-800-GAMBLER\" where required",
+    visualGuidelines: "",
+    tone: "",
+    legalDisclosure: "",
     timeline: "Draft to us by [date]\nFeedback within 48 hours\nFinal posts live by [date]",
-    usageRights: "FADE may repost and whitelist this content for 30 days from posting",
+    usageRights: "",
 
     intro:
       `Hey ${creator.name.split(" ")[0]} — welcome to the ${campaign.name} campaign! ` +
@@ -47,8 +45,8 @@ export default async function BriefEditorPage({
     deliverables: "1× Instagram Reel (30–60 seconds)\n2× Instagram Stories with the link sticker",
     talkingPoints:
       "FADE is where you bet against the public — fade the crowd\nKeep it in your own voice; talk to your audience like you always do\nMention the campaign window so followers know it's live now",
-    dos: "Post during the campaign window\nTag @fade and use your tracking link\nSend content for approval before posting",
-    donts: "No guarantees of winning — keep it fun, not financial advice\nDon't read the talking points like a script\nNo posts targeting under-21 audiences",
+    dos: "",
+    donts: "",
     dueDate: campaign.endDate ? campaign.endDate.toISOString().slice(0, 10) : "",
     compensationCents: creator.agreedCostCents,
   };

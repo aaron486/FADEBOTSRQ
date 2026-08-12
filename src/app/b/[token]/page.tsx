@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { fmtDate, fmtMoneyCents } from "@/lib/creator-meta";
 import { FadeWordmark } from "@/components/logo";
+import { getBriefDefaults } from "@/lib/brief-defaults";
 
 export const dynamic = "force-dynamic";
 
@@ -39,10 +40,24 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
   if (!brief) notFound();
   const { creator, campaign } = brief;
 
+  // Brand boilerplate is shared across all briefs; a brief's own text wins.
+  const shared = await getBriefDefaults();
+  const brand = {
+    brandSocials: brief.brandSocials?.trim() || shared.brandSocials,
+    productDetails: brief.productDetails?.trim() || shared.productDetails,
+    differentiators: brief.differentiators?.trim() || shared.differentiators,
+    dos: brief.dos?.trim() || shared.dos,
+    donts: brief.donts?.trim() || shared.donts,
+    legalDisclosure: brief.legalDisclosure?.trim() || shared.legalDisclosure,
+    usageRights: brief.usageRights?.trim() || shared.usageRights,
+    tone: brief.tone?.trim() || shared.tone,
+    visualGuidelines: brief.visualGuidelines?.trim() || shared.visualGuidelines,
+  };
+
   const deliverables = lines(brief.deliverables);
   const talkingPoints = lines(brief.talkingPoints);
-  const dos = lines(brief.dos);
-  const donts = lines(brief.donts);
+  const dos = lines(brand.dos);
+  const donts = lines(brand.donts);
   const window =
     campaign.startDate || campaign.endDate
       ? `${campaign.startDate ? fmtDate(campaign.startDate) : "…"} → ${campaign.endDate ? fmtDate(campaign.endDate) : "…"}`
@@ -80,20 +95,20 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
         </div>
 
         {/* Core company profile */}
-        {(brief.productDetails || brief.differentiators || brief.brandSocials) && (
+        {(brand.productDetails || brand.differentiators || brand.brandSocials) && (
           <section className="card p-5">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2 pb-2 mb-3" style={{ borderBottom: "1px solid var(--grid)" }}>
               About FADE
             </h2>
-            {brief.productDetails && <p className="text-sm text-ink-2 mb-3">{brief.productDetails}</p>}
-            {lines(brief.differentiators).length > 0 && (
+            {brand.productDetails && <p className="text-sm text-ink-2 mb-3">{brand.productDetails}</p>}
+            {lines(brand.differentiators).length > 0 && (
               <ul className="space-y-1 list-disc pl-5 text-sm text-ink-2 marker:text-ink-3 mb-3">
-                {lines(brief.differentiators).map((d, i) => (<li key={i}>{d}</li>))}
+                {lines(brand.differentiators).map((d, i) => (<li key={i}>{d}</li>))}
               </ul>
             )}
-            {lines(brief.brandSocials).length > 0 && (
+            {lines(brand.brandSocials).length > 0 && (
               <p className="text-xs text-ink-3">
-                {lines(brief.brandSocials).map((l, i) => {
+                {lines(brand.brandSocials).map((l, i) => {
                   const href = socialHref(l);
                   return (
                     <span key={i}>
@@ -197,17 +212,17 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
           </section>
         )}
 
-        {(lines(brief.visualGuidelines).length > 0 || brief.tone) && (
+        {(lines(brand.visualGuidelines).length > 0 || brand.tone) && (
           <section className="card p-5">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2 pb-2 mb-3" style={{ borderBottom: "1px solid var(--grid)" }}>
               🎬 Look &amp; feel
             </h2>
-            {lines(brief.visualGuidelines).length > 0 && (
+            {lines(brand.visualGuidelines).length > 0 && (
               <ul className="space-y-1 list-disc pl-5 text-sm text-ink-2 marker:text-ink-3 mb-2">
-                {lines(brief.visualGuidelines).map((v, i) => (<li key={i}>{v}</li>))}
+                {lines(brand.visualGuidelines).map((v, i) => (<li key={i}>{v}</li>))}
               </ul>
             )}
-            {brief.tone && <p className="text-sm text-ink-2"><b>Tone:</b> {brief.tone}</p>}
+            {brand.tone && <p className="text-sm text-ink-2"><b>Tone:</b> {brand.tone}</p>}
           </section>
         )}
 
@@ -240,18 +255,18 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
           </section>
         )}
 
-        {lines(brief.legalDisclosure).length > 0 && (
+        {lines(brand.legalDisclosure).length > 0 && (
           <section className="card p-5">
             <h2 className="text-xs font-semibold uppercase tracking-wider pb-2 mb-3" style={{ color: "var(--critical)", borderBottom: "1px solid var(--grid)" }}>
               🚫 Required disclosure
             </h2>
             <ul className="space-y-1 list-disc pl-5 text-sm text-ink-2 marker:text-ink-3">
-              {lines(brief.legalDisclosure).map((l, i) => (<li key={i}>{l}</li>))}
+              {lines(brand.legalDisclosure).map((l, i) => (<li key={i}>{l}</li>))}
             </ul>
           </section>
         )}
 
-        {(lines(brief.timeline).length > 0 || brief.usageRights) && (
+        {(lines(brief.timeline).length > 0 || brand.usageRights) && (
           <section className="card p-5">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2 pb-2 mb-3" style={{ borderBottom: "1px solid var(--grid)" }}>
               ⚙️ Timeline &amp; terms
@@ -261,7 +276,7 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
                 {lines(brief.timeline).map((t, i) => (<li key={i}>{t}</li>))}
               </ul>
             )}
-            {brief.usageRights && <p className="text-sm text-ink-2"><b>Usage rights:</b> {brief.usageRights}</p>}
+            {brand.usageRights && <p className="text-sm text-ink-2"><b>Usage rights:</b> {brand.usageRights}</p>}
           </section>
         )}
 

@@ -253,6 +253,11 @@ export function BriefEditor({
         {field("b-intro", "Welcome note / brand introduction", intro, setIntro, 3)}
 
         <SectionLabel>Core company profile</SectionLabel>
+        <p className="text-[11px] text-ink-3 -mt-2">
+          Brand boilerplate (socials, product, do/don&apos;t, legal, usage rights, tone, visuals) is shared by
+          every brief — edit it once in Settings → Brief brand defaults. Leave these blank to use it; type
+          here only to override for this one brief.
+        </p>
         {field("b-socials", "Brand social handles — one per line", brandSocials, setBrandSocials, 3)}
         {field("b-product", "Product details", productDetails, setProductDetails, 3)}
         {field("b-diff", "Key differentiators — one per line", differentiators, setDifferentiators, 3)}

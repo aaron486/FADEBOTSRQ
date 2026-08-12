@@ -2,13 +2,16 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { AllowlistManager } from "./allowlist-manager";
+import { BriefDefaultsEditor } from "./brief-defaults-editor";
+import { getBriefDefaults } from "@/lib/brief-defaults";
 
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const [session, emails] = await Promise.all([
+  const [session, emails, briefDefaults] = await Promise.all([
     auth(),
     prisma.allowedEmail.findMany({ orderBy: { createdAt: "asc" } }),
+    getBriefDefaults(),
   ]);
 
   return (
@@ -35,6 +38,7 @@ export default async function SettingsPage() {
         </div>
         <Link href="/templates" className="btn btn-sm">Manage templates</Link>
       </div>
+      <BriefDefaultsEditor defaults={briefDefaults} />
     </div>
   );
 }
