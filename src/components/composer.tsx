@@ -7,7 +7,7 @@ import {
   PLATFORMS,
   fillTemplate,
   channels,
-  dmUrl,
+  profileUrl,
 } from "@/lib/creator-meta";
 import { SCENARIOS, TONES, ToneKey, scenarioByKey } from "@/lib/scenarios";
 import { markDmSent, sendOutreachEmail } from "@/lib/actions/outreach";
@@ -317,8 +317,9 @@ export function Composer({
         {!isEmailChannel ? (
           <>
             <button className="btn" onClick={copyDraft}>Copy draft</button>
-            <a className="btn" href={dmUrl(channel, channelHandle)} target="_blank" rel="noopener noreferrer">
-              Open {PLATFORMS[channel].label} ↗
+            <a className="btn" href={profileUrl(channel, channelHandle)} target="_blank" rel="noopener noreferrer"
+              title={`Opens ${channelHandle}'s ${PLATFORMS[channel].label} profile`}>
+              Open {channelHandle} ↗
             </a>
             <button className="btn btn-primary" onClick={doMarkSent} disabled={busy || !body.trim()}>
               {pending ? "Saving…" : "Mark as sent"}
