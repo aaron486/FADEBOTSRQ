@@ -86,3 +86,5 @@ src/lib/creator-meta.ts     Stages, platforms, template variables, formatters
 src/app/(app)/              Dashboard, creator detail, templates, settings (auth-guarded)
 src/components/             Dashboard views, kanban, composer
 ```
+
+<!-- deploy: full creative brief + brand handles -->
