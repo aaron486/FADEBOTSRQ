@@ -64,6 +64,38 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
           </div>
         </div>
 
+        {/* Core company profile */}
+        {(brief.productDetails || brief.differentiators || brief.brandSocials) && (
+          <section className="card p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2 pb-2 mb-3" style={{ borderBottom: "1px solid var(--grid)" }}>
+              About FADE
+            </h2>
+            {brief.productDetails && <p className="text-sm text-ink-2 mb-3">{brief.productDetails}</p>}
+            {lines(brief.differentiators).length > 0 && (
+              <ul className="space-y-1 list-disc pl-5 text-sm text-ink-2 marker:text-ink-3 mb-3">
+                {lines(brief.differentiators).map((d, i) => (<li key={i}>{d}</li>))}
+              </ul>
+            )}
+            {lines(brief.brandSocials).length > 0 && (
+              <p className="text-xs text-ink-3">{lines(brief.brandSocials).join(" · ")}</p>
+            )}
+          </section>
+        )}
+
+        {/* Objectives & audience */}
+        {(brief.mainGoal || brief.targetAudience || brief.desiredAction) && (
+          <section className="card p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2 pb-2 mb-3" style={{ borderBottom: "1px solid var(--grid)" }}>
+              🎯 The goal
+            </h2>
+            <div className="space-y-2 text-sm text-ink-2">
+              {brief.mainGoal && <p><b>Main goal:</b> {brief.mainGoal}</p>}
+              {brief.targetAudience && <p><b>Who we&apos;re talking to:</b> {brief.targetAudience}</p>}
+              {brief.desiredAction && <p><b>What viewers should do:</b> {brief.desiredAction}</p>}
+            </div>
+          </section>
+        )}
+
         {brief.sourceUrl && (
           <section className="card p-5 flex flex-wrap items-center gap-3">
             <div className="mr-auto">
@@ -82,6 +114,25 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
               The concept
             </h2>
             <pre className="whitespace-pre-wrap font-sans text-[14px] leading-relaxed text-ink-2">{brief.concept}</pre>
+          </section>
+        )}
+
+        {lines(brief.referenceLinks).length > 0 && (
+          <section className="card p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2 pb-2 mb-3" style={{ borderBottom: "1px solid var(--grid)" }}>
+              Reference content
+            </h2>
+            <ul className="space-y-1.5 text-sm">
+              {lines(brief.referenceLinks).map((l, i) => (
+                <li key={i}>
+                  {/^https?:\/\//.test(l) ? (
+                    <a href={l} target="_blank" rel="noreferrer" className="underline break-all text-ink-2">{l}</a>
+                  ) : (
+                    <span className="text-ink-2">{l}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
           </section>
         )}
 
@@ -117,6 +168,20 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
           </section>
         )}
 
+        {(lines(brief.visualGuidelines).length > 0 || brief.tone) && (
+          <section className="card p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2 pb-2 mb-3" style={{ borderBottom: "1px solid var(--grid)" }}>
+              🎬 Look &amp; feel
+            </h2>
+            {lines(brief.visualGuidelines).length > 0 && (
+              <ul className="space-y-1 list-disc pl-5 text-sm text-ink-2 marker:text-ink-3 mb-2">
+                {lines(brief.visualGuidelines).map((v, i) => (<li key={i}>{v}</li>))}
+              </ul>
+            )}
+            {brief.tone && <p className="text-sm text-ink-2"><b>Tone:</b> {brief.tone}</p>}
+          </section>
+        )}
+
         {(dos.length > 0 || donts.length > 0) && (
           <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {dos.length > 0 && (
@@ -143,6 +208,31 @@ export default async function BriefPage({ params }: { params: Promise<{ token: s
                 </ul>
               </div>
             )}
+          </section>
+        )}
+
+        {lines(brief.legalDisclosure).length > 0 && (
+          <section className="card p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wider pb-2 mb-3" style={{ color: "var(--critical)", borderBottom: "1px solid var(--grid)" }}>
+              🚫 Required disclosure
+            </h2>
+            <ul className="space-y-1 list-disc pl-5 text-sm text-ink-2 marker:text-ink-3">
+              {lines(brief.legalDisclosure).map((l, i) => (<li key={i}>{l}</li>))}
+            </ul>
+          </section>
+        )}
+
+        {(lines(brief.timeline).length > 0 || brief.usageRights) && (
+          <section className="card p-5">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-2 pb-2 mb-3" style={{ borderBottom: "1px solid var(--grid)" }}>
+              ⚙️ Timeline &amp; terms
+            </h2>
+            {lines(brief.timeline).length > 0 && (
+              <ul className="space-y-1 list-disc pl-5 text-sm text-ink-2 marker:text-ink-3 mb-2">
+                {lines(brief.timeline).map((t, i) => (<li key={i}>{t}</li>))}
+              </ul>
+            )}
+            {brief.usageRights && <p className="text-sm text-ink-2"><b>Usage rights:</b> {brief.usageRights}</p>}
           </section>
         )}
 

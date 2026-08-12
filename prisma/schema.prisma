@@ -207,6 +207,18 @@ model CreatorBrief {
   sourceUrl         String?
   concept           String?
   intro             String?
+  referenceLinks    String?
+  brandSocials      String?
+  productDetails    String?
+  differentiators   String?
+  mainGoal          String?
+  targetAudience    String?
+  desiredAction     String?
+  visualGuidelines  String?
+  tone              String?
+  legalDisclosure   String?
+  timeline          String?
+  usageRights       String?
   deliverables      String?
   talkingPoints     String?
   dos               String?

@@ -25,6 +25,21 @@ export default async function BriefEditorPage({
     headline: `FADE × ${creator.name} — ${campaign.name}`,
     sourceUrl: "",
     concept: "",
+    referenceLinks: "",
+    brandSocials: "Instagram: [@handle]\nX: [@handle]\nTikTok: [@handle]",
+    productDetails:
+      "FADE (fade.bet) is a sports-betting entertainment platform built around one idea: fade the public — bet against what the crowd loves. [Add product specifics: how it works, promos, availability]",
+    differentiators:
+      "We own the fade-the-public angle — nobody else does\nEntertainment-first, not another odds screen\n[Add 1–2 more]",
+    mainGoal: "Brand awareness + signups",
+    targetAudience: "Sports fans 21+ who bet casually, love the sweat, and follow sports culture accounts",
+    desiredAction: "Tap the [tracking link] in bio / use code [CODE]",
+    visualGuidelines: "Natural lighting, shot on phone is fine\nShow the app screen when relevant\nCaptions on for sound-off viewers",
+    tone: "Funny, confident, authentic — sports-bar energy, never corporate",
+    legalDisclosure: "#ad visible in the caption (not buried)\n21+ only — include \"21+. Gambling problem? Call 1-800-GAMBLER\" where required",
+    timeline: "Draft to us by [date]\nFeedback within 48 hours\nFinal posts live by [date]",
+    usageRights: "FADE may repost and whitelist this content for 30 days from posting",
+
     intro:
       `Hey ${creator.name.split(" ")[0]} — welcome to the ${campaign.name} campaign! ` +
       `We're FADE (fade.bet), and this page has everything you need: what to make, ` +
@@ -58,6 +73,18 @@ export default async function BriefEditorPage({
               headline: brief.headline ?? "",
               sourceUrl: brief.sourceUrl ?? "",
               concept: brief.concept ?? "",
+              referenceLinks: brief.referenceLinks ?? "",
+              brandSocials: brief.brandSocials ?? "",
+              productDetails: brief.productDetails ?? "",
+              differentiators: brief.differentiators ?? "",
+              mainGoal: brief.mainGoal ?? "",
+              targetAudience: brief.targetAudience ?? "",
+              desiredAction: brief.desiredAction ?? "",
+              visualGuidelines: brief.visualGuidelines ?? "",
+              tone: brief.tone ?? "",
+              legalDisclosure: brief.legalDisclosure ?? "",
+              timeline: brief.timeline ?? "",
+              usageRights: brief.usageRights ?? "",
               intro: brief.intro ?? "",
               deliverables: brief.deliverables ?? "",
               talkingPoints: brief.talkingPoints ?? "",
