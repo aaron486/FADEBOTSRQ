@@ -230,30 +230,30 @@ export function NewCreatorForm({ aiEnabled }: { aiEnabled: boolean }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="instagram">Instagram · followers</label>
-            <div className="flex gap-2">
-              <input id="instagram" className="input flex-1" placeholder="@handle" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
-              <input className="input w-28" type="number" min={0} placeholder="followers" value={igFollowers} onChange={(e) => setIgFollowers(e.target.value)} />
+            <div className="flex flex-wrap gap-2">
+              <input id="instagram" className="input flex-1 min-w-0" style={{ minWidth: "140px" }} placeholder="@handle" value={instagram} onChange={(e) => setInstagram(e.target.value)} />
+              <input className="input w-24 flex-none" type="number" min={0} placeholder="followers" value={igFollowers} onChange={(e) => setIgFollowers(e.target.value)} />
             </div>
           </div>
           <div>
             <label className="field-label" htmlFor="x">X · followers</label>
-            <div className="flex gap-2">
-              <input id="x" className="input flex-1" placeholder="@handle" value={x} onChange={(e) => setX(e.target.value)} />
-              <input className="input w-28" type="number" min={0} placeholder="followers" value={xFollowers} onChange={(e) => setXFollowers(e.target.value)} />
+            <div className="flex flex-wrap gap-2">
+              <input id="x" className="input flex-1 min-w-0" style={{ minWidth: "140px" }} placeholder="@handle" value={x} onChange={(e) => setX(e.target.value)} />
+              <input className="input w-24 flex-none" type="number" min={0} placeholder="followers" value={xFollowers} onChange={(e) => setXFollowers(e.target.value)} />
             </div>
           </div>
           <div>
             <label className="field-label" htmlFor="tiktok">TikTok · followers</label>
-            <div className="flex gap-2">
-              <input id="tiktok" className="input flex-1" placeholder="@handle" value={tiktok} onChange={(e) => setTiktok(e.target.value)} />
-              <input className="input w-28" type="number" min={0} placeholder="followers" value={ttFollowers} onChange={(e) => setTtFollowers(e.target.value)} />
+            <div className="flex flex-wrap gap-2">
+              <input id="tiktok" className="input flex-1 min-w-0" style={{ minWidth: "140px" }} placeholder="@handle" value={tiktok} onChange={(e) => setTiktok(e.target.value)} />
+              <input className="input w-24 flex-none" type="number" min={0} placeholder="followers" value={ttFollowers} onChange={(e) => setTtFollowers(e.target.value)} />
             </div>
           </div>
           <div>
             <label className="field-label" htmlFor="youtube">YouTube · subscribers</label>
-            <div className="flex gap-2">
-              <input id="youtube" className="input flex-1" placeholder="@channel" value={youtube} onChange={(e) => setYoutube(e.target.value)} />
-              <input className="input w-28" type="number" min={0} placeholder="subs" value={ytFollowers} onChange={(e) => setYtFollowers(e.target.value)} />
+            <div className="flex flex-wrap gap-2">
+              <input id="youtube" className="input flex-1 min-w-0" style={{ minWidth: "140px" }} placeholder="@channel" value={youtube} onChange={(e) => setYoutube(e.target.value)} />
+              <input className="input w-24 flex-none" type="number" min={0} placeholder="subs" value={ytFollowers} onChange={(e) => setYtFollowers(e.target.value)} />
             </div>
           </div>
           <div>
