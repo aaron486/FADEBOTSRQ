@@ -12,6 +12,18 @@ export type BriefInput = {
   sourceUrl: string;
   concept: string;
   intro: string;
+  referenceLinks: string;
+  brandSocials: string;
+  productDetails: string;
+  differentiators: string;
+  mainGoal: string;
+  targetAudience: string;
+  desiredAction: string;
+  visualGuidelines: string;
+  tone: string;
+  legalDisclosure: string;
+  timeline: string;
+  usageRights: string;
   deliverables: string;
   talkingPoints: string;
   dos: string;
@@ -29,6 +41,18 @@ export async function saveBrief(campaignId: string, creatorId: string, input: Br
     sourceUrl: clean(input.sourceUrl),
     concept: clean(input.concept),
     intro: clean(input.intro),
+    referenceLinks: clean(input.referenceLinks),
+    brandSocials: clean(input.brandSocials),
+    productDetails: clean(input.productDetails),
+    differentiators: clean(input.differentiators),
+    mainGoal: clean(input.mainGoal),
+    targetAudience: clean(input.targetAudience),
+    desiredAction: clean(input.desiredAction),
+    visualGuidelines: clean(input.visualGuidelines),
+    tone: clean(input.tone),
+    legalDisclosure: clean(input.legalDisclosure),
+    timeline: clean(input.timeline),
+    usageRights: clean(input.usageRights),
     deliverables: clean(input.deliverables),
     talkingPoints: clean(input.talkingPoints),
     dos: clean(input.dos),

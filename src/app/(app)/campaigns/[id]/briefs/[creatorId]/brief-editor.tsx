@@ -4,12 +4,33 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { saveBrief, deleteBrief, generateBrief } from "@/lib/actions/briefs";
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-xs font-semibold uppercase tracking-wider text-ink-2 pt-2 pb-1"
+      style={{ borderBottom: "1px solid var(--grid)" }}>
+      {children}
+    </div>
+  );
+}
+
 type BriefData = {
   token: string;
   headline: string;
   sourceUrl: string;
   concept: string;
   intro: string;
+  referenceLinks: string;
+  brandSocials: string;
+  productDetails: string;
+  differentiators: string;
+  mainGoal: string;
+  targetAudience: string;
+  desiredAction: string;
+  visualGuidelines: string;
+  tone: string;
+  legalDisclosure: string;
+  timeline: string;
+  usageRights: string;
   deliverables: string;
   talkingPoints: string;
   dos: string;
@@ -45,6 +66,18 @@ export function BriefEditor({
   const [sourceUrl, setSourceUrl] = useState(src.sourceUrl);
   const [concept, setConcept] = useState(src.concept);
   const [intro, setIntro] = useState(src.intro);
+  const [referenceLinks, setReferenceLinks] = useState(src.referenceLinks);
+  const [brandSocials, setBrandSocials] = useState(src.brandSocials);
+  const [productDetails, setProductDetails] = useState(src.productDetails);
+  const [differentiators, setDifferentiators] = useState(src.differentiators);
+  const [mainGoal, setMainGoal] = useState(src.mainGoal);
+  const [targetAudience, setTargetAudience] = useState(src.targetAudience);
+  const [desiredAction, setDesiredAction] = useState(src.desiredAction);
+  const [visualGuidelines, setVisualGuidelines] = useState(src.visualGuidelines);
+  const [tone, setTone] = useState(src.tone);
+  const [legalDisclosure, setLegalDisclosure] = useState(src.legalDisclosure);
+  const [timeline, setTimeline] = useState(src.timeline);
+  const [usageRights, setUsageRights] = useState(src.usageRights);
   const [deliverables, setDeliverables] = useState(src.deliverables);
   const [talkingPoints, setTalkingPoints] = useState(src.talkingPoints);
   const [dos, setDos] = useState(src.dos);
@@ -88,6 +121,18 @@ export function BriefEditor({
         sourceUrl,
         concept,
         intro,
+        referenceLinks,
+        brandSocials,
+        productDetails,
+        differentiators,
+        mainGoal,
+        targetAudience,
+        desiredAction,
+        visualGuidelines,
+        tone,
+        legalDisclosure,
+        timeline,
+        usageRights,
         deliverables,
         talkingPoints,
         dos,
@@ -205,19 +250,53 @@ export function BriefEditor({
           <label className="field-label" htmlFor="b-headline">Headline</label>
           <input id="b-headline" className="input" value={headline} onChange={(e) => setHeadline(e.target.value)} />
         </div>
-        {field("b-intro", "Welcome note", intro, setIntro, 3)}
+        {field("b-intro", "Welcome note / brand introduction", intro, setIntro, 3)}
+
+        <SectionLabel>Core company profile</SectionLabel>
+        {field("b-socials", "Brand social handles — one per line", brandSocials, setBrandSocials, 3)}
+        {field("b-product", "Product details", productDetails, setProductDetails, 3)}
+        {field("b-diff", "Key differentiators — one per line", differentiators, setDifferentiators, 3)}
+
+        <SectionLabel>🎯 Objectives &amp; audience</SectionLabel>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="field-label" htmlFor="b-goal">Main goal</label>
+            <input id="b-goal" className="input" value={mainGoal} onChange={(e) => setMainGoal(e.target.value)} />
+          </div>
+          <div>
+            <label className="field-label" htmlFor="b-action">Desired action</label>
+            <input id="b-action" className="input" value={desiredAction} onChange={(e) => setDesiredAction(e.target.value)} />
+          </div>
+        </div>
+        {field("b-audience", "Target audience", targetAudience, setTargetAudience, 2)}
+
+        <SectionLabel>Reference content</SectionLabel>
+        {field("b-refs", "Reference links — one per line (their past content, examples we love, competitor posts)", referenceLinks, setReferenceLinks, 3, "Shown on their page as clickable links.")}
         <div>
           <label className="field-label" htmlFor="b-source">Source post link (shown on their page)</label>
           <input id="b-source" className="input" placeholder="https://x.com/…  ·  instagram.com/…  ·  tiktok.com/…"
             value={sourceUrl} onChange={(e) => setSourceUrl(e.target.value)} />
         </div>
         {field("b-concept", "The concept (from the content studio, or write your own)", concept, setConcept, 8)}
+        <SectionLabel>🎬 Content &amp; creative</SectionLabel>
         {field("b-deliverables", "Deliverables — one per line", deliverables, setDeliverables, 4, "Shows as a checklist on their page.")}
-        {field("b-talking", "Talking points — one per line", talkingPoints, setTalkingPoints, 4)}
+        {field("b-talking", "Key messages / talking points — one per line", talkingPoints, setTalkingPoints, 4)}
+        {field("b-visual", "Visual guidelines — one per line", visualGuidelines, setVisualGuidelines, 3)}
+        <div>
+          <label className="field-label" htmlFor="b-tone">Tone of voice</label>
+          <input id="b-tone" className="input" value={tone} onChange={(e) => setTone(e.target.value)} />
+        </div>
+
+        <SectionLabel>🚫 Guardrails &amp; compliance</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {field("b-dos", "Do — one per line", dos, setDos, 4)}
           {field("b-donts", "Don't — one per line", donts, setDonts, 4)}
         </div>
+        {field("b-legal", "Legal disclosure rules — one per line", legalDisclosure, setLegalDisclosure, 2)}
+
+        <SectionLabel>⚙️ Logistics &amp; administration</SectionLabel>
+        {field("b-timeline", "Timeline — one per line", timeline, setTimeline, 3)}
+        {field("b-usage", "Usage rights", usageRights, setUsageRights, 2)}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="field-label" htmlFor="b-due">Content due</label>
