@@ -7,6 +7,19 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/auth";
 import { PLATFORMS, Platform, channels, fmtDate, fmtMoneyCents } from "@/lib/creator-meta";
 import { BriefDefaults } from "@/lib/brief-defaults";
+import { BrandVoice, brandVoiceContext } from "@/lib/brand-voice";
+
+/** Save the brand voice + content plan used by every AI feature. */
+export async function saveBrandVoice(input: BrandVoice) {
+  await requireUser();
+  await prisma.appSetting.upsert({
+    where: { key: "brandVoice" },
+    create: { key: "brandVoice", value: JSON.stringify(input) },
+    update: { value: JSON.stringify(input) },
+  });
+  revalidatePath("/settings");
+  return { ok: true as const };
+}
 
 /** Save the brand-level brief boilerplate shared by every brief. */
 export async function saveBriefDefaults(input: BriefDefaults) {
@@ -195,7 +208,7 @@ Rules:
       messages: [
         {
           role: "user",
-          content: `CONTEXT:\n${context}\n\nTHE TEAM'S DESCRIPTION OF THE ASK:\n${prompt.trim()}\n\nTASK: Write the complete creative brief for this creator.`,
+          content: `${await brandVoiceContext()}\n\nCONTEXT:\n${context}\n\nTHE TEAM'S DESCRIPTION OF THE ASK:\n${prompt.trim()}\n\nTASK: Write the complete creative brief for this creator.`,
         },
       ],
     } as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming);
