@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/auth";
 import { PieceFormat, PieceStatus, PIECE_FORMATS, detectPostPlatform, parseDriveFolderId, driveThumb } from "@/lib/creator-meta";
 import { listDriveFolder } from "@/lib/drive";
+import { brandVoiceContext } from "@/lib/brand-voice";
 
 const clean = (v: string | null | undefined) => v?.trim() || null;
 
@@ -344,7 +345,7 @@ Rules:
       messages: [
         {
           role: "user",
-          content: `SOURCE POST: ${input.sourceUrl.trim() || "none — concept from the angle alone"}${
+          content: `${await brandVoiceContext()}\n\nSOURCE POST: ${input.sourceUrl.trim() || "none — concept from the angle alone"}${
             platform ? ` (${platform})` : ""
           }\nTEAM'S ANGLE: ${input.angle.trim() || "none given — infer a strong angle from the link context"}\n${
             input.theme?.trim() ? `THEME BUCKET: ${input.theme.trim()}\n` : ""

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/auth";
 import { PLATFORMS, Platform, channels, stageMeta, Stage } from "@/lib/creator-meta";
 import { scenarioByKey, TONES, ToneKey } from "@/lib/scenarios";
+import { brandVoiceContext } from "@/lib/brand-voice";
 
 const MODEL = "claude-opus-5";
 
@@ -128,7 +129,7 @@ Hard rules:
       messages: [
         {
           role: "user",
-          content: `CREATOR CONTEXT:\n${creatorContext}\n\nSCENARIO: ${scenario ? `${scenario.label} — ${scenario.description}` : input.scenario}\n\nTONE: ${tone?.label ?? input.tone}\n${
+          content: `${await brandVoiceContext()}\n\nCREATOR CONTEXT:\n${creatorContext}\n\nSCENARIO: ${scenario ? `${scenario.label} — ${scenario.description}` : input.scenario}\n\nTONE: ${tone?.label ?? input.tone}\n${
             input.instructions?.trim() ? `\nEXTRA INSTRUCTIONS FROM THE SENDER: ${input.instructions.trim()}\n` : ""
           }\nTASK: ${task}`,
         },
