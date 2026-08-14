@@ -7,7 +7,7 @@ import { sendEmail } from "@/lib/email";
 import { PLATFORMS, Stage, stageIndex, Platform, channels } from "@/lib/creator-meta";
 
 function revalidateCreator(id: string) {
-  revalidatePath("/");
+  revalidatePath("/creators");
   revalidatePath(`/creators/${id}`);
 }
 
