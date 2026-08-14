@@ -383,7 +383,7 @@ Respond with ONLY a JSON object (no prose, no markdown fences) containing exactl
       },
     },
   });
-  revalidatePath("/");
+  revalidatePath("/creators");
   revalidatePath(`/creators/${creatorId}`);
   return { ok: true, changes };
 }

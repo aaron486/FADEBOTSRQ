@@ -118,7 +118,7 @@ export function CreatorDetail({
     <div className="space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
-        <Link href="/" className="btn btn-ghost btn-sm">← Dashboard</Link>
+        <Link href="/creators" className="btn btn-ghost btn-sm">← Creators</Link>
         <CreatorAvatar creator={creator} size={40} />
         <h1 className="text-xl font-bold">{creator.name}</h1>
         <span className="flex flex-wrap items-center gap-2 text-sm">

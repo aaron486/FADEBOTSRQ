@@ -14,7 +14,7 @@ import {
 } from "@/lib/creator-meta";
 
 function revalidateCreator(id: string) {
-  revalidatePath("/");
+  revalidatePath("/creators");
   revalidatePath(`/creators/${id}`);
 }
 
@@ -110,7 +110,7 @@ export async function createCreator(input: CreatorInput) {
         : {}),
     },
   });
-  revalidatePath("/");
+  revalidatePath("/creators");
   redirect(`/creators/${creator.id}`);
 }
 
@@ -226,8 +226,8 @@ export async function updateDeal(id: string, input: DealInput) {
 export async function deleteCreator(id: string) {
   await requireUser();
   await prisma.creator.delete({ where: { id } });
-  revalidatePath("/");
-  redirect("/");
+  revalidatePath("/creators");
+  redirect("/creators");
 }
 
 export async function addPost(
