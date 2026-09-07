@@ -29,6 +29,7 @@ const FORMATS: { n: number; title: string; tag: string; desc: string }[] = [
 ];
 
 const LINKS = [
+  { href: "/scout", title: "Scout", desc: "Find new UGC talent with AI" },
   { href: "/creators", title: "Creators", desc: "Outreach, deals, follower tracking" },
   { href: "/campaigns", title: "Campaigns", desc: "Budgets, rosters, creative briefs" },
   { href: "/content", title: "Content", desc: "Concepts, vault, publish pipeline" },
@@ -38,7 +39,7 @@ export default function HomePage() {
   return (
     <div className="max-w-4xl mx-auto">
       {/* Quick nav */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+      <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {LINKS.map((l) => (
           <Link key={l.href} href={l.href} className="card p-4 hover:border-accent transition-colors">
             <div className="font-bold">{l.title} →</div>
