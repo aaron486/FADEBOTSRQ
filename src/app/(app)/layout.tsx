@@ -24,6 +24,7 @@ export default async function AppLayout({
           <nav className="flex items-center gap-4 text-sm text-ink-2">
             <Link href="/" className="hover:text-ink">Home</Link>
             <Link href="/creators" className="hover:text-ink">Creators</Link>
+            <Link href="/scout" className="hover:text-ink">Scout</Link>
             <Link href="/campaigns" className="hover:text-ink">Campaigns</Link>
             <Link href="/content" className="hover:text-ink">Content</Link>
             <Link href="/settings" className="hover:text-ink">Settings</Link>
