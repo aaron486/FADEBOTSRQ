@@ -178,3 +178,23 @@ body {
   display: inline-block;
   flex: none;
 }
+
+/* Talent deck (/d/[token]) — "Save as PDF" should read like a deck, so keep
+   each talent on one page and drop the screen-only chrome. */
+@media print {
+  .deck {
+    background: #ffffff;
+    color: #0b0b0b;
+  }
+  .deck .card {
+    border-color: #c3c2b7;
+    break-inside: avoid;
+  }
+  .deck-talent {
+    break-inside: avoid;
+    break-after: page;
+  }
+  .deck a {
+    text-decoration: none;
+  }
+}

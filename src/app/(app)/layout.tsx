@@ -26,6 +26,7 @@ export default async function AppLayout({
             <Link href="/creators" className="hover:text-ink">Creators</Link>
             <Link href="/scout" className="hover:text-ink">Scout</Link>
             <Link href="/campaigns" className="hover:text-ink">Campaigns</Link>
+            <Link href="/talent" className="hover:text-ink">Talent decks</Link>
             <Link href="/content" className="hover:text-ink">Content</Link>
             <Link href="/settings" className="hover:text-ink">Settings</Link>
           </nav>

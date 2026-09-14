@@ -117,6 +117,62 @@ export function detectPostPlatform(url: string): "X" | "INSTAGRAM" | "TIKTOK" | 
   return null;
 }
 
+/* ---- Talent decks ---- */
+
+export type BackgroundCheck = "NOT_STARTED" | "IN_REVIEW" | "CLEARED" | "FLAGGED";
+
+export const BACKGROUND_CHECKS: {
+  key: BackgroundCheck;
+  label: string;
+  colorVar: string;
+  /** Shown to partners on a deck — null means the badge stays internal. */
+  publicLabel: string | null;
+}[] = [
+  { key: "NOT_STARTED", label: "Not started", colorVar: "var(--text-muted)", publicLabel: null },
+  { key: "IN_REVIEW", label: "In review", colorVar: "var(--warning)", publicLabel: "Vetting in progress" },
+  { key: "CLEARED", label: "Cleared", colorVar: "var(--good)", publicLabel: "Background check cleared" },
+  // A flagged creator's reason is internal — never surfaced on a shared deck.
+  { key: "FLAGGED", label: "Flagged", colorVar: "var(--critical)", publicLabel: null },
+];
+
+export const backgroundCheckMeta = (b: BackgroundCheck) =>
+  BACKGROUND_CHECKS.find((x) => x.key === b) ?? BACKGROUND_CHECKS[0];
+
+/** The roster-profile fields a talent deck renders for each creator. */
+export type TalentProfileFields = {
+  tagline: string | null;
+  bio: string | null;
+  location: string | null;
+  photoUrls: string | null;
+  pastPartnerships: string | null;
+  brandAlignment: string | null;
+  audienceAgeRange: string | null;
+  audienceGenderSplit: string | null;
+  audienceTopLocations: string | null;
+  audienceInterests: string | null;
+  engagementRatePct: number | null;
+  avgViews: number | null;
+  backgroundCheck: BackgroundCheck;
+  backgroundCheckNotes: string | null;
+  backgroundCheckedAt: string | null;
+};
+
+/** One-per-line text field → trimmed items, with any bullet character dropped. */
+export const bulletLines = (v: string | null | undefined): string[] =>
+  (v ?? "")
+    .split("\n")
+    .map((l) => l.replace(/^[-•*]\s*/, "").trim())
+    .filter(Boolean);
+
+/** Photo field → renderable image URLs (Drive links become thumbnails). */
+export const photoList = (v: string | null | undefined): string[] =>
+  bulletLines(v)
+    .map(toThumbUrl)
+    .filter((u): u is string => !!u);
+
+export const fmtPct = (n: number | null | undefined) =>
+  n == null ? "—" : `${Number.isInteger(n) ? n : n.toFixed(1)}%`;
+
 export const CONTRACT_STATUSES: { key: ContractStatus; label: string }[] = [
   { key: "NONE", label: "None" },
   { key: "DRAFTING", label: "Drafting" },

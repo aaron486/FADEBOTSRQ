@@ -53,6 +53,22 @@ export default async function CreatorPage({
         contractNotes: creator.contractNotes,
         followersUpdatedAt: creator.followersUpdatedAt?.toISOString() ?? null,
         updatedAt: creator.updatedAt.toISOString(),
+        // Roster profile — the copy every partnership deck renders.
+        tagline: creator.tagline,
+        bio: creator.bio,
+        location: creator.location,
+        photoUrls: creator.photoUrls,
+        pastPartnerships: creator.pastPartnerships,
+        brandAlignment: creator.brandAlignment,
+        audienceAgeRange: creator.audienceAgeRange,
+        audienceGenderSplit: creator.audienceGenderSplit,
+        audienceTopLocations: creator.audienceTopLocations,
+        audienceInterests: creator.audienceInterests,
+        engagementRatePct: creator.engagementRatePct,
+        avgViews: creator.avgViews,
+        backgroundCheck: creator.backgroundCheck,
+        backgroundCheckNotes: creator.backgroundCheckNotes,
+        backgroundCheckedAt: creator.backgroundCheckedAt?.toISOString() ?? null,
       }}
       posts={creator.posts.map((p) => ({
         id: p.id,

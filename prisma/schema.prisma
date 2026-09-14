@@ -91,6 +91,13 @@ enum ContractStatus {
   SIGNED
 }
 
+enum BackgroundCheck {
+  NOT_STARTED
+  IN_REVIEW
+  CLEARED
+  FLAGGED
+}
+
 enum MessageStatus {
   DRAFT
   SENT
@@ -124,6 +131,25 @@ model Creator {
   notes     String?
   stage     Stage   @default(TO_CONTACT)
 
+  // ---- Talent-roster profile ----
+  // Public-facing showcase copy, shown on partnership decks (/d/[token]).
+  // Free-text list fields are one item per line.
+  tagline              String?
+  bio                  String?
+  location             String?
+  photoUrls            String?
+  pastPartnerships     String?
+  brandAlignment       String?
+  audienceAgeRange     String?
+  audienceGenderSplit  String?
+  audienceTopLocations String?
+  audienceInterests    String?
+  engagementRatePct    Float?
+  avgViews             Int?
+  backgroundCheck      BackgroundCheck @default(NOT_STARTED)
+  backgroundCheckNotes String?
+  backgroundCheckedAt  DateTime?
+
   agreedCostCents  Int?
   paidCents        Int?
   paidAt           DateTime?
@@ -143,6 +169,7 @@ model Creator {
   contentItems      ContentItem[]
   briefs            CreatorBrief[]
   pieces            ContentPiece[]
+  decks             TalentDeckCreator[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -338,6 +365,44 @@ model PieceComment {
   createdAt DateTime     @default(now())
 
   @@index([pieceId])
+}
+
+// ---------- Talent decks ----------
+
+// A curated roster of FADE talent, published as a branded partnership page
+// at /d/[token] that a brand or agency can open without an account.
+model TalentDeck {
+  id           String  @id @default(cuid())
+  name         String
+  token        String  @unique @default(cuid())
+  headline     String?
+  clientName   String?
+  intro        String?
+  closing      String?
+  contactName  String?
+  contactEmail String?
+  ctaUrl       String?
+  // Unpublishing kills the public link without deleting the deck.
+  published    Boolean @default(true)
+
+  creators  TalentDeckCreator[]
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+}
+
+model TalentDeckCreator {
+  deckId    String
+  deck      TalentDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  creatorId String
+  creator   Creator    @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  // Running order on the public page, low to high.
+  position  Int        @default(0)
+  // Why this talent, for this partner — deck-specific, unlike brandAlignment.
+  pitch     String?
+  addedAt   DateTime   @default(now())
+
+  @@id([deckId, creatorId])
+  @@index([creatorId])
 }
 
 model Template {

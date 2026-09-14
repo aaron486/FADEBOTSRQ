@@ -6,6 +6,7 @@ import {
   Platform,
   Stage,
   ContractStatus,
+  TalentProfileFields,
   STAGES,
   stageMeta,
   PLATFORMS,
@@ -29,6 +30,7 @@ import {
 import { refreshProfiles } from "@/lib/actions/lookup";
 import { Composer } from "@/components/composer";
 import { CreatorAvatar } from "@/components/creator-avatar";
+import { TalentProfileForm } from "@/components/talent-profile-form";
 
 export type CreatorDetailData = {
   id: string;
@@ -58,7 +60,7 @@ export type CreatorDetailData = {
   contractNotes: string | null;
   followersUpdatedAt: string | null;
   updatedAt: string;
-};
+} & TalentProfileFields;
 
 export type MessageItem = {
   id: string;
@@ -169,6 +171,9 @@ export function CreatorDetail({
             aiEnabled={aiEnabled}
           />
           <DealSection creator={creator} />
+          <Section title="Talent profile — shown on partnership decks">
+            <TalentProfileForm creatorId={creator.id} profile={creator} />
+          </Section>
           <PostsSection creator={creator} posts={posts} />
         </div>
         <div className="space-y-4">

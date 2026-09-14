@@ -13,6 +13,7 @@ An internal dashboard for managing creator partnerships end to end:
 - **Outreach composer** — reusable templates with `{name}` / `{handle}` / `{platform}` variables:
   - **Instagram / X**: generates the DM, copy-to-clipboard, deep link to their DMs, "Mark as sent" logging (IG/X don't allow sending DMs via API)
   - **Email**: actually sends through [Resend](https://resend.com) from your domain and logs the message
+- **Talent decks** — curate a roster of your best creators and share it as a FADE-branded partnership page at a private `/d/[token]` link: photos, per-platform follower counts, reach and engagement, relevant past partnerships, brand alignment, background-check status, and audience breakdown. Each creator carries one reusable **talent profile**, and every deck adds its own "why them, for this partner" pitch. Unpublish to kill the link; the page prints cleanly to PDF.
 - **Deal tracking** — agreed cost, amount paid, contract status (drafting → sent → signed, auto-advances the stage on signing)
 - **Post tracking** — post URLs with views/likes, editable as numbers come in
 - **KPIs** — committed spend, paid out, awaiting reply, total views, cost per 1k views
@@ -81,9 +82,10 @@ prisma/schema.prisma        Data model (creators, templates, messages, posts, ac
 prisma/seed.ts              Allowlist + default templates (+ optional sample data)
 src/auth.ts                 Auth.js config: magic link, allowlist gate, dev login
 src/lib/email.ts            Resend wrapper (console fallback without an API key)
-src/lib/actions/            Server actions: creators, outreach, templates, settings
+src/lib/actions/            Server actions: creators, outreach, templates, settings, talent decks
 src/lib/creator-meta.ts     Stages, platforms, template variables, formatters
-src/app/(app)/              Dashboard, creator detail, templates, settings (auth-guarded)
+src/app/(app)/              Dashboard, creator detail, talent decks, templates, settings (auth-guarded)
+src/app/d/[token]/          Public talent deck — the branded partnership page
 src/components/             Dashboard views, kanban, composer
 ```
 
