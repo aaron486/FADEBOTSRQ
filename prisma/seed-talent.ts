@@ -48,12 +48,13 @@ const ROSTER: Seed[] = [
         "Mainstream reach far beyond the betting core, rooted in Atlanta sports fandom. A headline name that makes a roster feel major to a partner before they read a single stat.",
     },
     pitch:
-      "The marquee name on the roster. Books out the top of a campaign and gives every other creator on this deck a halo.",
+      "The marquee name on the roster. Books out the top of a campaign and gives every other creator on this deck a halo. Upcoming with FADE: taking a CFB/NFL tailgate this season, on the sidelines, vlogging the experience.",
     todo: ["Confirm IG follower count", "Confirm X / TikTok handles", "Management contact + rate"],
   },
   {
     name: "Veeze",
-    source: "Wikipedia and Complex profile (Detroit rapper, 'Ganger', Lil Yachty collab)",
+    source:
+      "Wikipedia and Complex profile (Detroit rapper, 'Ganger', Lil Yachty collab); Michigan audience concentration per the FADE team",
     profile: {
       name: "Veeze",
       primaryPlatform: "INSTAGRAM",
@@ -62,11 +63,12 @@ const ROSTER: Seed[] = [
       tagline: "Detroit's most quotable rapper — the internet's favourite deadpan",
       bio: "One of the most imitated voices out of Detroit, with a deadpan delivery that turns into captions and comment-section language within hours of a release.",
       pastPartnerships: "",
+      audienceTopLocations: "Heavily concentrated in Michigan — Detroit metro at the core",
       brandAlignment:
-        "Young, extremely online audience that rewards humour over hard sell — a fit for content that reads as a joke first and a bet slip second.",
+        "Young, extremely online audience that rewards humour over hard sell. Following is concentrated in Michigan, a legal online sports-betting market — rare density for a rapper of his reach, and a state a book can actually convert in.",
     },
     pitch:
-      "The internet-native pick. His lines get screenshotted, which is exactly how a betting brand gets into a group chat.",
+      "The internet-native pick, and the most geographically concentrated: heavy Michigan following in a live betting market. His lines get screenshotted, which is how a betting brand gets into a group chat.",
     todo: [
       "CONFIRM THE HANDLE before sending — several accounts claim to be Veeze and I could not verify which is official",
       "Follower counts once the handle is confirmed",
@@ -177,7 +179,7 @@ const ROSTER: Seed[] = [
       tagline: "College guard, NIL pioneer, and a reality-TV name in his own right",
       bio: "Guard finishing his college career at New Orleans, son of Master P, and the signer of what was reported as the largest NIL deal in the country when the rules changed in 2021. Now also a cast member on reality TV, straddling sport and entertainment.",
       pastPartnerships:
-        "Web Apps America — reported $2M NIL brand-ambassador deal, 2021\nConfidential Calabasas — reality series cast member",
+        "Web Apps America — reported $2M NIL brand-ambassador deal, 2021\nConfidential Calabasas — reality series cast member\nBET Awards — red carpet, 2026",
       brandAlignment:
         "Understands brand work from the inside — he has been a paid ambassador since college sport allowed it. Sits at the intersection of hoops and entertainment, with family ties that widen reach further.",
     },
