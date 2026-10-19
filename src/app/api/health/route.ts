@@ -13,6 +13,8 @@ export async function GET() {
     resendConfigured: !!process.env.RESEND_API_KEY,
     aiConfigured: !!process.env.ANTHROPIC_API_KEY,
     driveConfigured: !!process.env.GOOGLE_API_KEY,
+    gmailConfigured: !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD),
+    apifyConfigured: !!process.env.APIFY_TOKEN,
     databaseUrlSet: !!process.env.DATABASE_URL,
   };
   try {
