@@ -271,17 +271,26 @@ export const fmtDateTime = (d: Date | string | null | undefined) =>
  * no API keys, no stored images. Returns null when there's nothing to key on.
  */
 export function avatarUrl(c: ContactFields): string | null {
+  return avatarUrls(c)[0] ?? null;
+}
+
+/**
+ * Every avatar candidate in priority order — the component walks the list on
+ * load errors, so a blocked Instagram lookup falls through to TikTok, X, etc.
+ */
+export function avatarUrls(c: ContactFields): string[] {
   const h = (v: string | null) => (v?.trim() ? v.trim().replace(/^@/, "") : null);
+  const urls: string[] = [];
   const ig = h(c.instagramHandle);
-  if (ig) return `https://unavatar.io/instagram/${ig}`;
+  if (ig) urls.push(`https://unavatar.io/instagram/${ig}`);
   const tt = h(c.tiktokHandle);
-  if (tt) return `https://unavatar.io/tiktok/${tt}`;
+  if (tt) urls.push(`https://unavatar.io/tiktok/${tt}`);
   const x = h(c.xHandle);
-  if (x) return `https://unavatar.io/x/${x}`;
+  if (x) urls.push(`https://unavatar.io/x/${x}`);
   const yt = h(c.youtubeHandle);
-  if (yt) return `https://unavatar.io/youtube/${yt}`;
-  if (c.email?.trim()) return `https://unavatar.io/${encodeURIComponent(c.email.trim())}`;
-  return null;
+  if (yt) urls.push(`https://unavatar.io/youtube/${yt}`);
+  if (c.email?.trim()) urls.push(`https://unavatar.io/${encodeURIComponent(c.email.trim())}`);
+  return urls;
 }
 
 export function initials(name: string): string {

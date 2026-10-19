@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ContactFields, avatarUrl, initials } from "@/lib/creator-meta";
+import { ContactFields, avatarUrls, initials } from "@/lib/creator-meta";
 
 /**
- * Round profile picture pulled live from the creator's social profile
- * (unavatar.io keyed off their handles); falls back to initials when no
- * handle resolves to an image.
+ * Round profile picture pulled live from the creator's social profiles
+ * (unavatar.io keyed off their handles). Walks every handle in priority
+ * order on load errors; falls back to initials when none resolves.
  */
 export function CreatorAvatar({
   creator,
@@ -17,11 +17,12 @@ export function CreatorAvatar({
   size?: number;
   className?: string;
 }) {
-  const [failed, setFailed] = useState(false);
-  const url = avatarUrl(creator);
+  const [attempt, setAttempt] = useState(0);
+  const urls = avatarUrls(creator);
+  const url = urls[attempt];
   const style = { width: size, height: size, minWidth: size };
 
-  if (!url || failed) {
+  if (!url) {
     return (
       <div
         className={`rounded-full flex items-center justify-center font-semibold select-none ${className}`}
@@ -44,7 +45,7 @@ export function CreatorAvatar({
       src={`${url}?fallback=false&size=${Math.min(400, size * 2)}`}
       alt=""
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setAttempt((a) => a + 1)}
       className={`rounded-full object-cover ${className}`}
       style={{ ...style, background: "var(--grid)" }}
     />

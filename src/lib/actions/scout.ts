@@ -46,7 +46,7 @@ export async function scoutTalent(callText: string): Promise<ScoutResult> {
 Rules:
 - Only real accounts you found evidence for — never invent handles or follower counts; use null when unsure of a count.
 - Prefer accounts plausibly reachable for paid UGC (creators and meme/niche pages), not leagues, teams, or news outlets.
-- Aim for 8-12 candidates. Spread across the follower range asked for.
+- Aim for 12-20 candidates. Spread across the follower range asked for.
 - "why" is one punchy sentence on why they fit FADE specifically.
 
 After searching, respond with ONLY a JSON object (no prose, no markdown fences):
@@ -80,7 +80,7 @@ After searching, respond with ONLY a JSON object (no prose, no markdown fences):
       max_tokens: 8192,
       output_config: { effort: "low" },
       system,
-      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 12 }],
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 16 }],
       messages: msgs,
     });
 
@@ -269,7 +269,7 @@ export async function scrapeTikTokHashtags(hashtagsText: string): Promise<ScoutR
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ hashtags, resultsPerPage: 20 }),
+        body: JSON.stringify({ hashtags, resultsPerPage: 25 }),
         cache: "no-store",
       }
     );
@@ -302,7 +302,7 @@ export async function scrapeTikTokHashtags(hashtagsText: string): Promise<ScoutR
       });
     }
   }
-  const authors = [...byHandle.values()].sort((x, y) => (y.fans ?? 0) - (x.fans ?? 0)).slice(0, 20);
+  const authors = [...byHandle.values()].sort((x, y) => (y.fans ?? 0) - (x.fans ?? 0)).slice(0, 40);
   if (authors.length === 0) {
     return { ok: false, error: "The scrape came back empty — try different hashtags." };
   }

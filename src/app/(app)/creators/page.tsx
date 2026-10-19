@@ -58,5 +58,12 @@ export default async function DashboardPage() {
     };
   });
 
-  return <DashboardView rows={rows} aiEnabled={!!process.env.ANTHROPIC_API_KEY} />;
+  const lists = (
+    await prisma.creatorList.findMany({
+      orderBy: { name: "asc" },
+      include: { members: { select: { creatorId: true } } },
+    })
+  ).map((l) => ({ id: l.id, name: l.name, creatorIds: l.members.map((m) => m.creatorId) }));
+
+  return <DashboardView rows={rows} lists={lists} aiEnabled={!!process.env.ANTHROPIC_API_KEY} />;
 }

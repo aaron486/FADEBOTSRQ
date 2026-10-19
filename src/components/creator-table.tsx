@@ -21,9 +21,13 @@ import { CreatorAvatar } from "@/components/creator-avatar";
 export function CreatorTable({
   rows,
   onStageChange,
+  selected,
+  onToggleSelect,
 }: {
   rows: CreatorRow[];
   onStageChange: (id: string, stage: Stage) => void;
+  selected?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }) {
   const router = useRouter();
 
@@ -32,6 +36,7 @@ export function CreatorTable({
       <table className="w-full min-w-[1150px] border-collapse text-sm">
         <thead>
           <tr className="text-left text-xs text-ink-3">
+            {onToggleSelect && <th className="px-3 py-2.5 w-8" style={{ borderBottom: "1px solid var(--grid)" }} />}
             {[
               "Creator",
               "Contact",
@@ -67,6 +72,17 @@ export function CreatorTable({
                 className="cursor-pointer hover:bg-accent/5"
                 onClick={() => router.push(`/creators/${c.id}`)}
               >
+                {onToggleSelect && (
+                  <td className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--grid)" }} onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 cursor-pointer align-middle"
+                      checked={selected?.has(c.id) ?? false}
+                      onChange={() => onToggleSelect(c.id)}
+                      aria-label={`Select ${c.name}`}
+                    />
+                  </td>
+                )}
                 <td className="px-3 py-2.5" style={{ borderBottom: "1px solid var(--grid)" }}>
                   <div className="flex items-center gap-2.5">
                     <CreatorAvatar creator={c} size={34} />
