@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { fmtCompact } from "@/lib/creator-meta";
-import { scoutTalent, addScoutedCreator, ScoutCandidate } from "@/lib/actions/scout";
+import { scoutTalent, scrapeTikTokHashtags, addScoutedCreator, ScoutCandidate } from "@/lib/actions/scout";
 
 const EXAMPLES = [
   "College football meme pages, 20K–200K followers, SEC-heavy audience",
@@ -12,7 +12,8 @@ const EXAMPLES = [
   "Barstool-style personalities who talk trash about parlays",
 ];
 
-export function ScoutView({ aiEnabled }: { aiEnabled: boolean }) {
+export function ScoutView({ aiEnabled, apifyEnabled }: { aiEnabled: boolean; apifyEnabled: boolean }) {
+  const [mode, setMode] = useState<"ai" | "hashtags">("ai");
   const [call, setCall] = useState("");
   const [candidates, setCandidates] = useState<ScoutCandidate[] | null>(null);
   const [note, setNote] = useState("");
@@ -30,7 +31,7 @@ export function ScoutView({ aiEnabled }: { aiEnabled: boolean }) {
     setAdded({});
     setScouting(true);
     startTransition(async () => {
-      const res = await scoutTalent(call);
+      const res = mode === "hashtags" ? await scrapeTikTokHashtags(call) : await scoutTalent(call);
       setScouting(false);
       if (!res.ok) return setError(res.error);
       setCandidates(res.candidates);
@@ -71,15 +72,36 @@ export function ScoutView({ aiEnabled }: { aiEnabled: boolean }) {
       )}
 
       <section className="card p-4 mb-4">
-        <label className="field-label" htmlFor="call">Casting call</label>
+        <div className="flex rounded-lg overflow-hidden w-fit mb-3" style={{ border: "1px solid var(--edge)" }}>
+          {([
+            { key: "ai", label: "✨ AI casting call" },
+            { key: "hashtags", label: "# TikTok hashtag scrape" },
+          ] as const).map((m) => (
+            <button key={m.key} onClick={() => { setMode(m.key); setCall(""); setCandidates(null); setError(""); }}
+              className="px-3 py-1.5 text-[13px] cursor-pointer"
+              style={mode === m.key
+                ? { background: "var(--accent)", color: "var(--accent-ink)", fontWeight: 600 }
+                : { background: "transparent", color: "var(--text-secondary)" }}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <label className="field-label" htmlFor="call">{mode === "hashtags" ? "Niche hashtags" : "Casting call"}</label>
         <textarea
           id="call"
           className="input"
-          rows={3}
-          placeholder={`e.g. "${EXAMPLES[0]}"`}
+          rows={mode === "hashtags" ? 2 : 3}
+          placeholder={mode === "hashtags" ? "#sportsbetting #badbeats #parlay" : `e.g. "${EXAMPLES[0]}"`}
           value={call}
           onChange={(e) => setCall(e.target.value)}
         />
+        {mode === "hashtags" && (
+          <p className="text-[11px] text-ink-3 mt-1">
+            Scrapes the top TikTok posts for up to 5 hashtags via Apify and returns the accounts behind
+            them — follower counts and bio emails included.{!apifyEnabled && " Needs APIFY_TOKEN set in Vercel."}
+          </p>
+        )}
+        {mode === "ai" && (
         <div className="flex flex-wrap gap-1.5 mt-2">
           {EXAMPLES.map((ex) => (
             <button key={ex} className="chip cursor-pointer" onClick={() => setCall(ex)}>
@@ -87,13 +109,17 @@ export function ScoutView({ aiEnabled }: { aiEnabled: boolean }) {
             </button>
           ))}
         </div>
+        )}
         <div className="flex items-center gap-3 mt-3">
-          <button className="btn btn-primary" onClick={scout} disabled={scouting || !call.trim() || !aiEnabled}>
-            {scouting ? "Scouting…" : "🔍 Scout talent"}
+          <button className="btn btn-primary" onClick={scout}
+            disabled={scouting || !call.trim() || (mode === "ai" ? !aiEnabled : !apifyEnabled)}>
+            {scouting ? "Scouting…" : mode === "hashtags" ? "# Scrape hashtags" : "🔍 Scout talent"}
           </button>
           {scouting && (
             <span className="text-xs" style={{ color: "var(--accent)" }}>
-              Searching the web for candidates — this takes 20–60 seconds…
+              {mode === "hashtags"
+                ? "Scraping TikTok via Apify — up to 2 minutes for busy hashtags…"
+                : "Searching the web for candidates — this takes 20–60 seconds…"}
             </span>
           )}
           {error && <span className="text-xs" style={{ color: "var(--critical)" }}>{error}</span>}
