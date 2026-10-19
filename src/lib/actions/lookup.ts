@@ -169,6 +169,116 @@ For YouTube, "followers" means subscribers. Follower counts are integers (approx
   }
 }
 
+export type EmailFindResult =
+  | { ok: true; email: string | null; note: string | null }
+  | { ok: false; error: string };
+
+const EMAIL_RE = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+
+/**
+ * Web-search for a creator's publicly listed business/booking email (bio,
+ * linktree, about page, press kit) and save it on their record when found.
+ */
+export async function findCreatorEmail(creatorId: string): Promise<EmailFindResult> {
+  const user = await requireUser();
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { ok: false, error: "Email lookup needs ANTHROPIC_API_KEY set on the server." };
+  }
+  const creator = await prisma.creator.findUniqueOrThrow({ where: { id: creatorId } });
+  if (creator.email?.trim()) {
+    return { ok: true, email: creator.email.trim(), note: "Already on file." };
+  }
+
+  const anchors = [
+    creator.instagramHandle?.trim() && `Instagram: https://instagram.com/${creator.instagramHandle.replace(/^@/, "")}`,
+    creator.tiktokHandle?.trim() && `TikTok: https://www.tiktok.com/@${creator.tiktokHandle.replace(/^@/, "")}`,
+    creator.xHandle?.trim() && `X: https://x.com/${creator.xHandle.replace(/^@/, "")}`,
+    creator.youtubeHandle?.trim() && `YouTube: https://www.youtube.com/@${creator.youtubeHandle.replace(/^@/, "")}`,
+  ].filter(Boolean) as string[];
+  if (anchors.length === 0) {
+    return { ok: false, error: "No handles on file to search from — add one first." };
+  }
+
+  const client = new Anthropic();
+  const system = `You find the publicly listed business/booking contact email that a creator themselves publishes — in their profile bio, linktree/beacons page, YouTube about page, personal website, or press kit. Only report an email the creator (or their management) publicly lists for business inquiries. Never guess, construct, or infer an address, and never report a private/personal address that isn't publicly posted for contact. If nothing is publicly listed, email is null.
+
+Respond with ONLY a JSON object (no prose, no markdown fences):
+{"email": "business@example.com" | null, "source": "where it is listed (e.g. 'TikTok bio', 'linktree')" | null}`;
+
+  const userMsg = `Creator: ${creator.name}${creator.niche ? ` (${creator.niche})` : ""}\nTheir official profiles:\n${anchors.join("\n")}\n\nFind their public business/booking email.`;
+
+  const request = (msgs: Anthropic.MessageParam[]) =>
+    client.messages.create({
+      model: MODEL,
+      max_tokens: 2048,
+      output_config: { effort: "low" },
+      system,
+      tools: [{ type: "web_search_20260209", name: "web_search", max_uses: 6 }],
+      messages: msgs,
+    });
+
+  let messages: Anthropic.MessageParam[] = [{ role: "user", content: userMsg }];
+  let response: Anthropic.Message;
+  try {
+    response = await request(messages);
+    let continuations = 0;
+    while (response.stop_reason === "pause_turn" && continuations++ < 4) {
+      messages = [...messages, { role: "assistant", content: response.content }];
+      response = await request(messages);
+    }
+  } catch (e) {
+    console.error("[lookup] findCreatorEmail failed", e);
+    if (e instanceof Anthropic.RateLimitError) {
+      return { ok: false, error: "Rate-limited — try again in a moment." };
+    }
+    if (e instanceof Anthropic.APIError) {
+      return { ok: false, error: `Email search failed (${e.status ?? "network"}).` };
+    }
+    return { ok: false, error: "Email search failed unexpectedly." };
+  }
+  if (response.stop_reason === "refusal") {
+    return { ok: false, error: "The search was declined for this creator." };
+  }
+
+  const text = response.content
+    .filter((b): b is Anthropic.TextBlock => b.type === "text")
+    .map((b) => b.text)
+    .join("\n");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end <= start) {
+    return { ok: false, error: "Couldn't parse the search result — try again." };
+  }
+
+  let parsed: { email?: string | null; source?: string | null };
+  try {
+    parsed = JSON.parse(text.slice(start, end + 1));
+  } catch {
+    return { ok: false, error: "Couldn't parse the search result — try again." };
+  }
+
+  const email = parsed.email?.trim() ?? "";
+  if (!email || !EMAIL_RE.test(email)) {
+    return { ok: true, email: null, note: "No publicly listed email found." };
+  }
+
+  await prisma.creator.update({
+    where: { id: creatorId },
+    data: {
+      email,
+      activities: {
+        create: {
+          text: `Email found via web search: ${email}${parsed.source ? ` (${parsed.source})` : ""}`,
+          userId: user.id,
+        },
+      },
+    },
+  });
+  revalidatePath("/creators");
+  revalidatePath(`/creators/${creatorId}`);
+  return { ok: true, email, note: parsed.source?.trim() || null };
+}
+
 export type RefreshResult =
   | { ok: true; changes: string[] }
   | { ok: false; error: string };

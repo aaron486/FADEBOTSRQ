@@ -15,6 +15,7 @@ import {
 } from "@/lib/creator-meta";
 import { setStage } from "@/lib/actions/creators";
 import { CreatorTable } from "@/components/creator-table";
+import { addCreatorsToList, deleteList } from "@/lib/actions/lists";
 import { KanbanBoard } from "@/components/kanban";
 import { FollowersTable } from "@/components/followers-table";
 
@@ -80,11 +81,15 @@ function readView(): ViewMode {
   }
 }
 
+export type ListInfo = { id: string; name: string; creatorIds: string[] };
+
 export function DashboardView({
   rows: serverRows,
+  lists = [],
   aiEnabled = false,
 }: {
   rows: CreatorRow[];
+  lists?: ListInfo[];
   aiEnabled?: boolean;
 }) {
   // Local copy so kanban drags apply optimistically; resyncs when the server
@@ -100,6 +105,12 @@ export function DashboardView({
   const [q, setQ] = useState("");
   const [platform, setPlatform] = useState<Platform | "">("");
   const [stageFilter, setStageFilter] = useState<Stage | "">("");
+  const [listFilter, setListFilter] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [listName, setListName] = useState("");
+  const [listBusy, setListBusy] = useState(false);
+  const [listNote, setListNote] = useState("");
+  const [savedListId, setSavedListId] = useState("");
   const [sort, setSort] = useState<SortKey>("updated");
   const [, startTransition] = useTransition();
 
@@ -131,6 +142,10 @@ export function DashboardView({
       list = list.filter((c) => !!c[key]);
     }
     if (stageFilter) list = list.filter((c) => c.stage === stageFilter);
+    if (listFilter) {
+      const ids = new Set(lists.find((l) => l.id === listFilter)?.creatorIds ?? []);
+      list = list.filter((c) => ids.has(c.id));
+    }
 
     const sorters: Record<SortKey, (a: CreatorRow, b: CreatorRow) => number> = {
       updated: (a, b) => b.updatedAt.localeCompare(a.updatedAt),
@@ -145,7 +160,40 @@ export function DashboardView({
       stage: (a, b) => stageIndex(a.stage) - stageIndex(b.stage),
     };
     return [...list].sort(sorters[sort]);
-  }, [rows, q, platform, stageFilter, sort]);
+  }, [rows, q, platform, stageFilter, listFilter, lists, sort]);
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function saveToList() {
+    if (!listName.trim() || selected.size === 0 || listBusy) return;
+    setListBusy(true);
+    setListNote("");
+    startTransition(async () => {
+      const res = await addCreatorsToList(listName, [...selected]);
+      setListBusy(false);
+      if (!res.ok) return setListNote(res.error);
+      setListNote(`Saved ${selected.size} to "${listName.trim()}".`);
+      setSavedListId(res.listId);
+      setSelected(new Set());
+      setListName("");
+    });
+  }
+
+  function removeList() {
+    const l = lists.find((x) => x.id === listFilter);
+    if (!l || !confirm(`Delete the list "${l.name}"? Creators themselves are kept.`)) return;
+    setListFilter("");
+    startTransition(async () => {
+      await deleteList(l.id);
+    });
+  }
 
   function moveStage(id: string, stage: Stage) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, stage } : r)));
@@ -226,6 +274,24 @@ export function DashboardView({
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
+        {lists.length > 0 && (
+          <select className="input w-auto" value={listFilter} onChange={(e) => setListFilter(e.target.value)} aria-label="List filter">
+            <option value="">All lists</option>
+            {lists.map((l) => (
+              <option key={l.id} value={l.id}>{l.name} ({l.creatorIds.length})</option>
+            ))}
+          </select>
+        )}
+        {listFilter && (
+          <>
+            <Link href={`/lists/${listFilter}`} className="btn btn-sm" title="Find emails and send outreach to everyone in this list">
+              ✉️ Email list
+            </Link>
+            <button className="btn btn-ghost btn-sm" onClick={removeList} title="Delete this list (keeps the creators)">
+              Delete list
+            </button>
+          </>
+        )}
         <select className="input w-auto" value={platform} onChange={(e) => setPlatform(e.target.value as Platform | "")}>
           <option value="">All platforms</option>
           {Object.entries(PLATFORMS).map(([k, v]) => (
@@ -280,7 +346,41 @@ export function DashboardView({
           </Link>
         </div>
       ) : view === "table" ? (
-        <CreatorTable rows={filtered} onStageChange={moveStage} />
+        <>
+          {(selected.size > 0 || listNote) && (
+            <div className="card px-3 py-2 mb-2 flex flex-wrap items-center gap-2">
+              {selected.size > 0 && (
+                <>
+                  <span className="text-sm font-medium">{selected.size} selected</span>
+                  <input
+                    className="input w-56"
+                    placeholder="List name — existing or new"
+                    list="creator-lists"
+                    value={listName}
+                    onChange={(e) => setListName(e.target.value)}
+                    aria-label="List name"
+                  />
+                  <datalist id="creator-lists">
+                    {lists.map((l) => (
+                      <option key={l.id} value={l.name} />
+                    ))}
+                  </datalist>
+                  <button className="btn btn-primary btn-sm" onClick={saveToList} disabled={listBusy || !listName.trim()}>
+                    {listBusy ? "Saving…" : "Save to list"}
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setSelected(new Set())}>Clear</button>
+                </>
+              )}
+              {listNote && <span className="text-xs" style={{ color: listNote.startsWith("Saved") ? "var(--good-text)" : "var(--critical)" }}>{listNote}</span>}
+              {listNote.startsWith("Saved") && savedListId && (
+                <Link href={`/lists/${savedListId}`} className="text-xs hover:underline" style={{ color: "var(--accent)" }}>
+                  Open list → find emails &amp; send outreach
+                </Link>
+              )}
+            </div>
+          )}
+          <CreatorTable rows={filtered} onStageChange={moveStage} selected={selected} onToggleSelect={toggleSelect} />
+        </>
       ) : view === "board" ? (
         <KanbanBoard rows={filtered} onStageChange={moveStage} />
       ) : (
