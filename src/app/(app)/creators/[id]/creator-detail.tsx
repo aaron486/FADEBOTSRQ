@@ -26,7 +26,7 @@ import {
   deletePost,
   addNote,
 } from "@/lib/actions/creators";
-import { refreshProfiles } from "@/lib/actions/lookup";
+import { refreshProfiles, findCreatorEmail } from "@/lib/actions/lookup";
 import { Composer } from "@/components/composer";
 import { CreatorAvatar } from "@/components/creator-avatar";
 
@@ -214,6 +214,8 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
   const [error, setError] = useState("");
   const [rowBusy, setRowBusy] = useState<Platform | "ALL" | null>(null);
   const [refreshNote, setRefreshNote] = useState("");
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailNote, setEmailNote] = useState("");
 
   const SOCIAL_ROWS: {
     key: Extract<Platform, "INSTAGRAM" | "X" | "TIKTOK" | "YOUTUBE">;
@@ -232,6 +234,20 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
     ...SOCIAL_ROWS.filter((r) => form[r.handleKey].trim()).map((r) => ({ key: r.key as Platform, label: r.label })),
     ...(form.email.trim() ? [{ key: "EMAIL" as Platform, label: "Email" }] : []),
   ];
+
+  async function findEmail() {
+    setEmailNote("");
+    setEmailBusy(true);
+    const res = await findCreatorEmail(creator.id);
+    setEmailBusy(false);
+    if (!res.ok) return setEmailNote(res.error);
+    if (res.email) {
+      setForm((f) => ({ ...f, email: res.email ?? f.email }));
+      setEmailNote(`Found: ${res.email}${res.note && res.note !== "Already on file." ? ` (${res.note})` : ""} — saved to their profile.`);
+    } else {
+      setEmailNote("No publicly listed email found — reach them by DM instead.");
+    }
+  }
 
   async function refreshRow(row: (typeof SOCIAL_ROWS)[number] | null) {
     setRefreshNote("");
@@ -352,7 +368,24 @@ function ProfileSection({ creator, aiEnabled }: { creator: CreatorDetailData; ai
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="field-label">Email</label>
-            <input className="input" type="email" placeholder="creator@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+            <div className="flex items-center gap-2">
+              <input className="input flex-1 min-w-0" type="email" placeholder="creator@example.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              {aiEnabled && !form.email.trim() && (
+                <button
+                  className="btn btn-sm flex-none"
+                  disabled={busy || emailBusy}
+                  onClick={findEmail}
+                  title="Web-search their bio, linktree, and about pages for a publicly listed business email"
+                >
+                  {emailBusy ? "Searching…" : "🔍 Find email"}
+                </button>
+              )}
+            </div>
+            {emailNote && (
+              <p className="text-xs mt-1" style={{ color: emailNote.startsWith("Found") ? "var(--good-text)" : "var(--critical)" }}>
+                {emailNote}
+              </p>
+            )}
           </div>
           <div>
             <label className="field-label">Phone</label>
