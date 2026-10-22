@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { fmtCompact } from "@/lib/creator-meta";
-import { scoutTalent, scrapeTikTokHashtags, addScoutedCreator, ScoutCandidate } from "@/lib/actions/scout";
+import { scoutTalent, scrapeHashtags, addScoutedCreator, ScoutCandidate, ScrapePlatform } from "@/lib/actions/scout";
 
 const EXAMPLES = [
   "College football meme pages, 20K–200K followers, SEC-heavy audience",
@@ -12,8 +12,27 @@ const EXAMPLES = [
   "Barstool-style personalities who talk trash about parlays",
 ];
 
+const SCRAPE_PLATFORMS: { key: ScrapePlatform; label: string; blurb: string }[] = [
+  {
+    key: "TIKTOK",
+    label: "TikTok",
+    blurb: "Scrapes the top TikTok posts for up to 5 hashtags and returns the accounts behind them — follower counts and bio emails included.",
+  },
+  {
+    key: "INSTAGRAM",
+    label: "Instagram",
+    blurb: "Scrapes the top Instagram posts for up to 5 hashtags and returns the accounts behind them. IG's hashtag feed hides follower counts — hit ↻ on a creator after adding to pull theirs.",
+  },
+  {
+    key: "X",
+    label: "X",
+    blurb: "Scrapes top X posts for up to 5 hashtags — follower counts and bio emails included. Uses apidojo/tweet-scraper, which has to be added to your Apify account once (apify.com → search \"Tweet Scraper\" → Rent).",
+  },
+];
+
 export function ScoutView({ aiEnabled, apifyEnabled }: { aiEnabled: boolean; apifyEnabled: boolean }) {
   const [mode, setMode] = useState<"ai" | "hashtags">("ai");
+  const [scrapePlatform, setScrapePlatform] = useState<ScrapePlatform>("TIKTOK");
   const [call, setCall] = useState("");
   const [candidates, setCandidates] = useState<ScoutCandidate[] | null>(null);
   const [note, setNote] = useState("");
@@ -31,7 +50,7 @@ export function ScoutView({ aiEnabled, apifyEnabled }: { aiEnabled: boolean; api
     setAdded({});
     setScouting(true);
     startTransition(async () => {
-      const res = mode === "hashtags" ? await scrapeTikTokHashtags(call) : await scoutTalent(call);
+      const res = mode === "hashtags" ? await scrapeHashtags(scrapePlatform, call) : await scoutTalent(call);
       setScouting(false);
       if (!res.ok) return setError(res.error);
       setCandidates(res.candidates);
@@ -75,7 +94,7 @@ export function ScoutView({ aiEnabled, apifyEnabled }: { aiEnabled: boolean; api
         <div className="flex rounded-lg overflow-hidden w-fit mb-3" style={{ border: "1px solid var(--edge)" }}>
           {([
             { key: "ai", label: "✨ AI casting call" },
-            { key: "hashtags", label: "# TikTok hashtag scrape" },
+            { key: "hashtags", label: "# Hashtag scrape" },
           ] as const).map((m) => (
             <button key={m.key} onClick={() => { setMode(m.key); setCall(""); setCandidates(null); setError(""); }}
               className="px-3 py-1.5 text-[13px] cursor-pointer"
@@ -86,6 +105,20 @@ export function ScoutView({ aiEnabled, apifyEnabled }: { aiEnabled: boolean; api
             </button>
           ))}
         </div>
+        {mode === "hashtags" && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {SCRAPE_PLATFORMS.map((p) => (
+              <button
+                key={p.key}
+                className="chip cursor-pointer"
+                onClick={() => setScrapePlatform(p.key)}
+                style={scrapePlatform === p.key ? { background: "var(--accent)", color: "var(--accent-ink)", borderColor: "var(--accent)" } : undefined}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
         <label className="field-label" htmlFor="call">{mode === "hashtags" ? "Niche hashtags" : "Casting call"}</label>
         <textarea
           id="call"
@@ -97,8 +130,8 @@ export function ScoutView({ aiEnabled, apifyEnabled }: { aiEnabled: boolean; api
         />
         {mode === "hashtags" && (
           <p className="text-[11px] text-ink-3 mt-1">
-            Scrapes the top TikTok posts for up to 5 hashtags via Apify and returns the accounts behind
-            them — follower counts and bio emails included.{!apifyEnabled && " Needs APIFY_TOKEN set in Vercel."}
+            {SCRAPE_PLATFORMS.find((p) => p.key === scrapePlatform)!.blurb}
+            {!apifyEnabled && " Needs APIFY_TOKEN set in Vercel."}
           </p>
         )}
         {mode === "ai" && (
@@ -118,7 +151,7 @@ export function ScoutView({ aiEnabled, apifyEnabled }: { aiEnabled: boolean; api
           {scouting && (
             <span className="text-xs" style={{ color: "var(--accent)" }}>
               {mode === "hashtags"
-                ? "Scraping TikTok via Apify — up to 2 minutes for busy hashtags…"
+                ? `Scraping ${SCRAPE_PLATFORMS.find((p) => p.key === scrapePlatform)!.label} via Apify — up to 2 minutes for busy hashtags…`
                 : "Searching the web for candidates — this takes 20–60 seconds…"}
             </span>
           )}

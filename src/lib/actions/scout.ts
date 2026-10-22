@@ -234,9 +234,11 @@ export async function addScoutedCreator(c: {
   return { ok: true as const, id: creator.id };
 }
 
-/* ---------- Apify: TikTok hashtag scrape ---------- */
+/* ---------- Apify: hashtag scrapes (TikTok / Instagram / X) ---------- */
 
-type ApifyItem = {
+export type ScrapePlatform = "TIKTOK" | "INSTAGRAM" | "X";
+
+type TikTokItem = {
   authorMeta?: {
     name?: string; // handle without @
     nickName?: string;
@@ -245,11 +247,65 @@ type ApifyItem = {
   };
 };
 
+type IgItem = {
+  ownerUsername?: string;
+  ownerFullName?: string;
+  caption?: string;
+};
+
+type XItem = {
+  author?: {
+    userName?: string;
+    name?: string;
+    followers?: number;
+    description?: string;
+  };
+};
+
+// One author collapsed out of the scraped posts, platform-agnostic.
+type ScrapedAuthor = { handle: string; nick: string; fans: number | null; bio: string };
+
+const EMAIL_IN_TEXT_RE = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+
+async function runApifyActor(
+  actor: string,
+  body: unknown,
+  token: string
+): Promise<{ ok: true; items: unknown[] } | { ok: false; error: string }> {
+  try {
+    const res = await fetch(
+      `https://api.apify.com/v2/acts/${actor}/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=90`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) {
+      const text = await res.text();
+      if (res.status === 401) return { ok: false, error: "Apify rejected the token — re-copy APIFY_TOKEN from apify.com → Settings → API tokens." };
+      if (res.status === 402) return { ok: false, error: "Apify says the account is out of credit — top up or use the free plan limits." };
+      if (res.status === 403 || res.status === 404) {
+        return { ok: false, error: `Apify can't run this scraper (HTTP ${res.status}) — open apify.com, search "${actor.replace("~", "/")}", and add/rent it on your account first.` };
+      }
+      console.error("[scout] apify error", actor, res.status, text.slice(0, 300));
+      return { ok: false, error: `Apify scrape failed (HTTP ${res.status}) — try again in a minute.` };
+    }
+    return { ok: true, items: (await res.json()) as unknown[] };
+  } catch (e) {
+    console.error("[scout] apify fetch failed", actor, e);
+    return { ok: false, error: "Couldn't reach Apify — the scrape may have timed out; try fewer hashtags." };
+  }
+}
+
 /**
- * Scrape TikTok by niche hashtags via Apify's TikTok scraper and return the
- * accounts behind the top posts as scout candidates (deduped against the CRM).
+ * Scrape a platform's top posts for niche hashtags via Apify and return the
+ * accounts behind them as scout candidates (deduped against the CRM).
+ * TikTok: clockworks/tiktok-scraper · Instagram: apify/instagram-hashtag-scraper ·
+ * X: apidojo/tweet-scraper (needs renting on the Apify account).
  */
-export async function scrapeTikTokHashtags(hashtagsText: string): Promise<ScoutResult> {
+export async function scrapeHashtags(platform: ScrapePlatform, hashtagsText: string): Promise<ScoutResult> {
   await requireUser();
   const token = process.env.APIFY_TOKEN?.trim();
   if (!token) {
@@ -262,66 +318,81 @@ export async function scrapeTikTokHashtags(hashtagsText: string): Promise<ScoutR
     .slice(0, 5);
   if (hashtags.length === 0) return { ok: false, error: "Enter at least one hashtag." };
 
-  let items: ApifyItem[];
-  try {
-    const res = await fetch(
-      `https://api.apify.com/v2/acts/clockworks~tiktok-scraper/run-sync-get-dataset-items?token=${encodeURIComponent(token)}&timeout=90`,
-      {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ hashtags, resultsPerPage: 25 }),
-        cache: "no-store",
-      }
-    );
-    if (!res.ok) {
-      const body = await res.text();
-      if (res.status === 401) return { ok: false, error: "Apify rejected the token — re-copy APIFY_TOKEN from apify.com → Settings → API tokens." };
-      if (res.status === 402) return { ok: false, error: "Apify says the account is out of credit — top up or use the free plan limits." };
-      console.error("[scout] apify error", res.status, body.slice(0, 300));
-      return { ok: false, error: `Apify scrape failed (HTTP ${res.status}) — try again in a minute.` };
+  // Collapse posts into unique authors, biggest first.
+  const byHandle = new Map<string, ScrapedAuthor>();
+  const addAuthor = (handle: string | undefined, nick: string | undefined, fans: number | undefined, bio: string | undefined) => {
+    if (!handle?.trim()) return;
+    const key = norm(handle);
+    if (byHandle.has(key)) return;
+    byHandle.set(key, {
+      handle: `@${handle.trim().replace(/^@/, "")}`,
+      nick: nick?.trim() || handle.trim().replace(/^@/, ""),
+      fans: typeof fans === "number" ? fans : null,
+      bio: bio?.trim() ?? "",
+    });
+  };
+
+  if (platform === "TIKTOK") {
+    const run = await runApifyActor("clockworks~tiktok-scraper", { hashtags, resultsPerPage: 25 }, token);
+    if (!run.ok) return run;
+    for (const it of run.items as TikTokItem[]) {
+      addAuthor(it.authorMeta?.name, it.authorMeta?.nickName, it.authorMeta?.fans, it.authorMeta?.signature);
     }
-    items = (await res.json()) as ApifyItem[];
-  } catch (e) {
-    console.error("[scout] apify fetch failed", e);
-    return { ok: false, error: "Couldn't reach Apify — the scrape may have timed out; try fewer hashtags." };
+  } else if (platform === "INSTAGRAM") {
+    const run = await runApifyActor("apify~instagram-hashtag-scraper", { hashtags, resultsLimit: 25 }, token);
+    if (!run.ok) return run;
+    for (const it of run.items as IgItem[]) {
+      // The hashtag feed doesn't expose follower counts or bios — the post
+      // caption still often carries a contact email.
+      addAuthor(it.ownerUsername, it.ownerFullName, undefined, it.caption);
+    }
+  } else {
+    const run = await runApifyActor(
+      "apidojo~tweet-scraper",
+      { searchTerms: hashtags.map((h) => `#${h}`), maxItems: 60, sort: "Top" },
+      token
+    );
+    if (!run.ok) return run;
+    for (const it of run.items as XItem[]) {
+      addAuthor(it.author?.userName, it.author?.name, it.author?.followers, it.author?.description);
+    }
   }
 
-  // Collapse posts into unique authors, biggest first.
-  const byHandle = new Map<string, { handle: string; nick: string; fans: number | null; bio: string }>();
-  for (const it of items) {
-    const a = it.authorMeta;
-    if (!a?.name) continue;
-    const key = norm(a.name);
-    const prev = byHandle.get(key);
-    if (!prev) {
-      byHandle.set(key, {
-        handle: `@${a.name.replace(/^@/, "")}`,
-        nick: a.nickName?.trim() || a.name,
-        fans: typeof a.fans === "number" ? a.fans : null,
-        bio: a.signature?.trim() ?? "",
-      });
-    }
-  }
   const authors = [...byHandle.values()].sort((x, y) => (y.fans ?? 0) - (x.fans ?? 0)).slice(0, 40);
   if (authors.length === 0) {
     return { ok: false, error: "The scrape came back empty — try different hashtags." };
   }
 
-  const existing = await prisma.creator.findMany({ select: { tiktokHandle: true } });
-  const known = new Set(existing.map((c) => norm(c.tiktokHandle)).filter(Boolean));
-  const emailRe = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i;
+  // Dedupe against the CRM by this platform's handle.
+  const existing = await prisma.creator.findMany({
+    select: { tiktokHandle: true, instagramHandle: true, xHandle: true },
+  });
+  const known = new Set(
+    existing
+      .map((c) => norm(platform === "TIKTOK" ? c.tiktokHandle : platform === "INSTAGRAM" ? c.instagramHandle : c.xHandle))
+      .filter(Boolean)
+  );
 
-  const candidates: ScoutCandidate[] = authors.map((a) => ({
-    name: a.nick,
-    niche: `#${hashtags.join(" #")}`,
-    why: a.bio ? `Bio: ${a.bio.slice(0, 140)}` : "Surfaced by hashtag scrape — top posts in the niche.",
-    instagram: null,
-    x: null,
-    tiktok: { handle: a.handle, followers: a.fans },
-    youtube: null,
-    email: a.bio.match(emailRe)?.[0] ?? null,
-    alreadyInCrm: known.has(norm(a.handle)),
-  }));
+  const candidates: ScoutCandidate[] = authors.map((a) => {
+    const hit: ScoutHit = { handle: a.handle, followers: a.fans };
+    return {
+      name: a.nick,
+      niche: `#${hashtags.join(" #")}`,
+      why: a.bio
+        ? `${platform === "INSTAGRAM" ? "Caption" : "Bio"}: ${a.bio.slice(0, 140)}`
+        : "Surfaced by hashtag scrape — top posts in the niche.",
+      instagram: platform === "INSTAGRAM" ? hit : null,
+      x: platform === "X" ? hit : null,
+      tiktok: platform === "TIKTOK" ? hit : null,
+      youtube: null,
+      email: a.bio.match(EMAIL_IN_TEXT_RE)?.[0] ?? null,
+      alreadyInCrm: known.has(norm(a.handle)),
+    };
+  });
 
-  return { ok: true, candidates, note: `Scraped top posts for ${hashtags.map((h) => "#" + h).join(", ")} — accounts behind them, biggest first. Emails are pulled from bios when present.` };
+  const note =
+    platform === "INSTAGRAM"
+      ? `Scraped top Instagram posts for ${hashtags.map((h) => "#" + h).join(", ")}. Instagram's hashtag feed doesn't expose follower counts — add a creator, then hit ↻ on their profile to pull them.`
+      : `Scraped top posts for ${hashtags.map((h) => "#" + h).join(", ")} — accounts behind them, biggest first. Emails are pulled from bios when present.`;
+  return { ok: true, candidates, note };
 }
